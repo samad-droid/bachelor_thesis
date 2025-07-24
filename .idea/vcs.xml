@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/eigen" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/polyscope" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/polyscope/deps/glfw" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/polyscope/deps/glm" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/polyscope/deps/happly" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/external/polyscope/deps/imgui/imgui" vcs="Git" />
+  </component>
+</project>
