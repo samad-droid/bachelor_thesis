@@ -7,7 +7,7 @@
 #include <random>
 #include <stdexcept>
 
-// ===== polyscope (needed for visualize* helpers) =====
+// ===== polyscope =====
 // adjust the include paths to wherever polyscope lives in your tree
 #include "external/polyscope/include/polyscope/polyscope.h"
 #include "external/polyscope/include/polyscope/point_cloud.h"
@@ -73,7 +73,6 @@ private:
 
 // ------------------------------------------------------------
 // 1) Sample N noisy points from an arbitrary-dimensional flat
-//    (moved from main.cpp)
 // ------------------------------------------------------------
 template <typename Scalar = double, class URNG>
 Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>
@@ -111,10 +110,41 @@ generateNoisyFlatSamples(const Flat<Scalar>& flat,
 
     return points;
 }
+//_____________________________________________________________
+//2) Sample N noisy planes from an arbitrary-dimensional flat
+//
+template <typename Scalar = double, class URNG>
+std::vector<Flat<Scalar>> generateRandomFlats(int numFlats,
+                                              int ambientDim,
+                                              int flatDim,
+                                              Scalar originSpread,
+                                              URNG& rng) {
+    using namespace Eigen;
+    using Vec = Matrix<Scalar, Dynamic, 1>;
+    using Mat = Matrix<Scalar, Dynamic, Dynamic>;
 
+    if (numFlats <= 0) throw std::invalid_argument("numFlats must be > 0");
+    if (flatDim <= 0 || flatDim >= ambientDim) throw std::invalid_argument("flatDim must be in (0, ambientDim)");
+
+    std::vector<Flat<Scalar>> flats;
+    std::uniform_real_distribution<Scalar> uni(-originSpread, originSpread);
+
+    for (int i = 0; i < numFlats; ++i) {
+        // Random origin
+        Vec origin = Vec::NullaryExpr(ambientDim, [&]() { return uni(rng); });
+
+        // Random basis (ambientDim x flatDim), orthonormalized
+        Mat B = Mat::Random(ambientDim, flatDim);
+        HouseholderQR<Mat> qr(B);
+        Mat B_orth = qr.householderQ() * Mat::Identity(ambientDim, flatDim);
+
+        flats.emplace_back(origin, B_orth);
+    }
+
+    return flats;
+}
 // ------------------------------------------------------------
 // Helpers to build mesh/curve for k = 2 / k = 1 in 3D
-// (moved from main.cpp)
 // ------------------------------------------------------------
 template <typename Scalar = double>
 void buildPlanePatchMesh(const Flat<Scalar>& plane,
@@ -185,7 +215,6 @@ void buildLinePatchCurve(const Flat<Scalar>& line,
 //    - k = 2: show a plane patch + point cloud
 //    - k = 1: show a line segment + point cloud
 //    - k = 0: just the origin
-// (moved from main.cpp)
 // ------------------------------------------------------------
 template <typename Scalar = double>
 void visualizeFlatSamples3D(const Flat<Scalar>& flat,
@@ -238,7 +267,6 @@ void visualizeFlatSamples3D(const Flat<Scalar>& flat,
 
 // ------------------------------------------------------------
 // Build a triangulated quad mesh on a Flat plane by sampling a grid in [-s, s]^2
-// (moved from main.cpp)
 // ------------------------------------------------------------
 inline void buildPlaneMesh(const Flat<>& plane,
                            double s,
