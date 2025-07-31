@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include "external/polyscope/include/polyscope/polyscope.h"
 #include "external/polyscope/include/polyscope/point_cloud.h"
 #include "external/polyscope/include/polyscope/surface_mesh.h"
@@ -7,6 +8,29 @@
 #include "external/eigen/Eigen/Dense"
 #include <random>
 #include "flat.h"
+
+// Save points and their cluster ID to a CSV file
+void savePointsToCSV(const std::string& filename, const std::vector<Eigen::MatrixXd>& allPoints, const std::vector<int>& clusterLabels) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+
+    file << "x,y,z,cluster\n";
+
+    for (size_t i = 0; i < allPoints.size(); ++i) {
+        const auto& mat = allPoints[i];
+        int cluster = clusterLabels[i];
+
+        for (int j = 0; j < mat.rows(); ++j) {
+            file << mat(j, 0) << "," << mat(j, 1) << "," << mat(j, 2) << "," << cluster << "\n";
+        }
+    }
+
+    file.close();
+    std::cout << "Saved CSV to " << filename << "\n";
+}
+
 
 // Helper function to compute mean projection error
 double computeMeanProjectionError(const Eigen::MatrixXd& noisyPts, const Flat<>& flat) {
@@ -24,90 +48,57 @@ double computeMeanProjectionError(const Eigen::MatrixXd& noisyPts, const Flat<>&
 int main() {
     polyscope::init();
 
-    using Scalar = double;
-    using Vec    = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-    using Mat    = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
-
-    std::mt19937 rng(std::random_device{}());
-    int    N           = 300;
+    // --- Generate 3 random planes and compute their errors
+    //rng=299
+    std::mt19937 rng2(244);
     double coordExtent = 1.0;
     double noiseStd    = 0.2;
-
-    // ----- Plane A (tilted in XZ, centered at (0, 0, 0))
-    Vec originA(3); originA << 0.0, 0.0, 0.0;
-    Mat basisA(3, 2);
-    basisA.col(0) = Eigen::Vector3d(1, 0, 1).normalized();  // diagonal in XZ
-    basisA.col(1) = Eigen::Vector3d(0, 1, 0);               // Y axis
-
-    Flat<Scalar> flatA(originA, basisA);
-    Mat pointsA = generateNoisyFlatSamples(flatA, N, coordExtent, noiseStd, rng);
-
-    double errorA = computeMeanProjectionError(pointsA, flatA);
-    std::cout << "Plane A: Mean projection error = " << errorA << "\n";
-
-    // ----- Plane B (tilted in YZ, centered at (2, 2, 2))
-    Vec originB(3); originB << 2.0, 2.0, 2.0;
-    Mat basisB(3, 2);
-    basisB.col(0) = Eigen::Vector3d(0, 1, 1).normalized();  // diagonal in YZ
-    basisB.col(1) = Eigen::Vector3d(1, 0, -1).normalized(); // diagonal in X(-Z)
-
-    Flat<Scalar> flatB(originB, basisB);
-    Mat pointsB = generateNoisyFlatSamples(flatB, N, coordExtent, noiseStd, rng);
-
-    double errorB = computeMeanProjectionError(pointsB, flatB);
-    std::cout << "Plane B: Mean projection error = " << errorB << "\n";
-
-    // ----- Visualize both planes + their points
-    try {
-        visualizeFlatSamples3D(flatA, pointsA, "Plane A ", 1.5, 20);
-        visualizeFlatSamples3D(flatB, pointsB, "Plane B ", 1.5, 20);
-    } catch (const std::exception& e) {
-        std::cerr << "Visualization failed: " << e.what() << "\n";
-        return 1;
-    }
-
-    // ----- Line A (diagonal in XZ, passes through origin)
-    Vec originLA(3); originLA << 2.0, 3.6, 6.5;
-    Mat basisLA(3, 1);
-    basisLA.col(0) = Eigen::Vector3d(1, 0, 1).normalized(); // XZ diagonal
-
-    Flat<Scalar> lineA(originLA, basisLA);
-    Mat pointsLA = generateNoisyFlatSamples(lineA, N, coordExtent, noiseStd, rng);
-
-    double errorLA = computeMeanProjectionError(pointsLA, lineA);
-    std::cout << "Line A: Mean projection error = " << errorLA << "\n";
-
-    // ----- Line B (diagonal in YZ, offset in space)
-    Vec originLB(3); originLB << 2.0, 2.0, 0.0;
-    Mat basisLB(3, 1);
-    basisLB.col(0) = Eigen::Vector3d(0, 1, 1).normalized(); // YZ diagonal
-
-    Flat<Scalar> lineB(originLB, basisLB);
-    Mat pointsLB = generateNoisyFlatSamples(lineB, N, coordExtent, noiseStd, rng);
-
-    double errorLB = computeMeanProjectionError(pointsLB, lineB);
-    std::cout << "Line B: Mean projection error = " << errorLB << "\n";
-
-    // ----- Visualize lines and their noisy point clouds
-    try {
-        visualizeFlatSamples3D(lineA, pointsLA, "Line A ", /*patchHalfSize*/ coordExtent, /*res*/ 40);
-        visualizeFlatSamples3D(lineB, pointsLB, "Line B ", /*patchHalfSize*/ coordExtent, /*res*/ 40);
-    } catch (const std::exception& e) {
-        std::cerr << "Visualization failed: " << e.what() << "\n";
-        return 1;
-    }
-
-    std::mt19937 rng2(311);
-    int numPlanes = 30;
     int ambientDim = 3;
-    int flatDim = 2;
-    double originSpread = 3.0;
+    double originSpread = 6.0;
 
-    std::vector<Flat<>> planes = generateRandomFlats(numPlanes, ambientDim, flatDim, originSpread, rng2);
+    std::vector<Flat<>> planes = generateRandomFlats(3, ambientDim, 2, originSpread, rng2);
     for (int i = 0; i < planes.size(); ++i) {
-        visualizeFlatSamples3D(planes[i], {}, "Plane_" + std::to_string(i), 1.0, 15);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> pts = generateNoisyFlatSamples(planes[i], 300, coordExtent, noiseStd, rng2);
+        double err = computeMeanProjectionError(pts, planes[i]);
+        std::cout << "Random Plane " << i << ": Mean projection error = " << err << "\n";
+        visualizeFlatSamples3D(planes[i], pts, "Random Plane " + std::to_string(i), 1.0, 20);
     }
 
+    // --- Generate 2 random lines and compute their errors
+    std::vector<Flat<>> lines = generateRandomFlats(2, ambientDim, 1, originSpread, rng2);
+    for (int i = 0; i < lines.size(); ++i) {
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> pts = generateNoisyFlatSamples(lines[i], 300, coordExtent, noiseStd, rng2);
+        double err = computeMeanProjectionError(pts, lines[i]);
+        std::cout << "Random Line " << i << ": Mean projection error = " << err << "\n";
+        visualizeFlatSamples3D(lines[i], pts, "Random Line " + std::to_string(i), 1.0, 40);
+    }
+    std::vector<Eigen::MatrixXd> allPoints;
+    std::vector<int> clusterLabels;
+
+    int clusterId = 1;
+
+    // Save planes
+    for (int i = 0; i < planes.size(); ++i) {
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> pts = generateNoisyFlatSamples(planes[i], 200, coordExtent, noiseStd, rng2);
+        double err = computeMeanProjectionError(pts, planes[i]);
+        std::cout << "Random Plane " << i << ": Mean projection error = " << err << "\n";
+        visualizeFlatSamples3D(planes[i], pts, "Random Plane " + std::to_string(i), 1.0, 20);
+        allPoints.push_back(pts);
+        clusterLabels.push_back(clusterId++);
+    }
+
+    // Save lines
+    for (int i = 0; i < lines.size(); ++i) {
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> pts = generateNoisyFlatSamples(lines[i], 200, coordExtent, noiseStd, rng2);
+        double err = computeMeanProjectionError(pts, lines[i]);
+        std::cout << "Random Line " << i << ": Mean projection error = " << err << "\n";
+        visualizeFlatSamples3D(lines[i], pts, "Random Line " + std::to_string(i), 1.0, 40);
+        allPoints.push_back(pts);
+        clusterLabels.push_back(clusterId++);
+    }
+
+    // Write to CSV
+    savePointsToCSV("../generated_data.csv", allPoints, clusterLabels);
     polyscope::show();
     return 0;
 }

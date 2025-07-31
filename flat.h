@@ -131,7 +131,7 @@ std::vector<Flat<double>> generateRandomFlats(int numFlats,
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> B = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Random(ambientDim, flatDim);
         Eigen::HouseholderQR<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> qr(B);
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> B_orth = qr.householderQ() * Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Identity(ambientDim, flatDim);
-        // origin orthonormalized, O - B_ortho*B_ortho^T*O
+        origin = origin - B_orth * (B_orth.transpose() * origin);
         flats.emplace_back(origin, B_orth);
     }
 
