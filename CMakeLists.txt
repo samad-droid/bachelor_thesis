@@ -14,7 +14,8 @@ add_subdirectory(external/polyscope)
 include_directories(${CMAKE_SOURCE_DIR}/external/eigen)
 
 add_executable(bachelor_thesis main.cpp
-        flat.h)
+        flat.h
+        ransac_line.h)
 
 target_link_libraries(bachelor_thesis
         polyscope

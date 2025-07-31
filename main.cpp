@@ -8,6 +8,7 @@
 #include "external/eigen/Eigen/Dense"
 #include <random>
 #include "flat.h"
+#include "ransac_line.h"
 
 // Save points and their cluster ID to a CSV file
 void savePointsToCSV(const std::string& filename, const std::vector<Eigen::MatrixXd>& allPoints, const std::vector<int>& clusterLabels) {
@@ -98,7 +99,36 @@ int main() {
     }
 
     // Write to CSV
-    savePointsToCSV("../generated_data.csv", allPoints, clusterLabels);
+    savePointsToCSV("../generated_data2.csv", allPoints, clusterLabels);
+
+    try {
+        PointList allPoints = loadCSV("../generated_data.csv");
+
+        auto detectedLines = multiRansacLines(allPoints, 1000, 0.38);
+        saveLinesToCSV(detectedLines, "../detected_lines.csv");
+
+        std::cout << "Detected " << detectedLines.size() << " lines\n";
+
+        for (int i = 0; i < detectedLines.size(); ++i) {
+            const auto& line = detectedLines[i];
+            std::cout << "Line " << i << " has " << line.inliers.size() << " inliers.\n";
+
+            VisualLine visLine = lineModelToVisualLine(line);
+            visualizeRansacLine(visLine, "RANSAC Line " + std::to_string(i));
+
+            // Visualize inliers separately
+            std::vector<glm::vec3> inlierPoints;
+            for (int idx : line.inliers) {
+                const Vec3& p = allPoints[idx];
+                inlierPoints.push_back(glm::vec3(static_cast<float>(p.x()), static_cast<float>(p.y()), static_cast<float>(p.z())));
+            }
+            polyscope::registerPointCloud("Line " + std::to_string(i) + " Inliers", inlierPoints);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "RANSAC failed: " << e.what() << "\n";
+    }
+
+
     polyscope::show();
     return 0;
 }
