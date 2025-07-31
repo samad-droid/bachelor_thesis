@@ -24,37 +24,35 @@ public:
     using Vector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
     using Matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
-    // ctor
-    Flat(const Vector& origin, const Matrix& basis)
+    Flat(const Eigen::Matrix<double, Eigen::Dynamic, 1>& origin, const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& basis)
         : origin_(origin), basis_(basis) {
         assert(basis_.cols() <= basis_.rows());
     }
 
     // accessors
-    const Vector& origin() const { return origin_; }
-    const Matrix& basis()  const { return basis_; }
+    const Eigen::Matrix<double, Eigen::Dynamic, 1>& origin() const { return origin_; }
+    const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& basis()  const { return basis_; }
 
     // dimensions
     int dimension() const        { return static_cast<int>(basis_.cols()); }
     int ambientDimension() const { return static_cast<int>(basis_.rows()); }
 
-    // membership test
-    bool contains(const Vector& point, Scalar eps = Scalar(1e-8)) const {
-        Vector diff      = point - origin_;
-        Vector proj      = basis_.transpose() * diff;
-        Vector flatPoint = origin_ + basis_ * proj;
+    bool contains(const Eigen::Matrix<double, Eigen::Dynamic, 1>& point, double eps = double(1e-8)) const {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> diff      = point - origin_;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> proj      = basis_.transpose() * diff;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> flatPoint = origin_ + basis_ * proj;
         return (point - flatPoint).norm() < eps;
     }
 
     // orthogonal projection
-    Vector project(const Vector& point) const {
-        Vector diff  = point - origin_;
-        Vector proj  = basis_.transpose() * diff;
+    Eigen::Matrix<double, Eigen::Dynamic, 1> project(const Eigen::Matrix<double, Eigen::Dynamic, 1>& point) const {
+        Eigen::Matrix<double, Eigen::Dynamic, 1> diff  = point - origin_;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> proj  = basis_.transpose() * diff;
         return origin_ + basis_ * proj;
     }
 
     // from local coordinates to ambient point
-    Vector pointFromCoords(const Vector& coords) const {
+    Eigen::Matrix<double, Eigen::Dynamic, 1> pointFromCoords(const Eigen::Matrix<double, Eigen::Dynamic, 1>& coords) const {
         assert(coords.size() == basis_.cols());
         return origin_ + basis_ * coords;
     }
@@ -67,20 +65,20 @@ public:
     }
 
 private:
-    Vector origin_;
-    Matrix basis_;
+    Eigen::Matrix<double, Eigen::Dynamic, 1> origin_;
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> basis_;
 };
 
 // ------------------------------------------------------------
 // 1) Sample N noisy points from an arbitrary-dimensional flat
 // ------------------------------------------------------------
-template <typename Scalar = double, class URNG>
-Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>
-generateNoisyFlatSamples(const Flat<Scalar>& flat,
+//template <typename Scalar = double, class URNG>
+Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>
+generateNoisyFlatSamples(const Flat<double>& flat,
                          int N,
-                         Scalar coordExtent,   // sample local coords u in [-coordExtent, coordExtent]^k
-                         Scalar noiseStd,      // Gaussian noise std-dev in the ambient space
-                         URNG& rng) {
+                         double coordExtent,   // sample local coords u in [-coordExtent, coordExtent]^k
+                         double noiseStd,      // Gaussian noise std-dev in the ambient space
+                         std::mt19937& rng) {
     using namespace Eigen;
 
     const int k = flat.dimension();
@@ -89,18 +87,18 @@ generateNoisyFlatSamples(const Flat<Scalar>& flat,
     if (N <= 0) throw std::invalid_argument("N must be > 0");
     if (k <= 0) throw std::invalid_argument("Flat dimension must be > 0");
 
-    std::uniform_real_distribution<Scalar> uni(-coordExtent, coordExtent);
-    std::normal_distribution<Scalar> gauss(Scalar(0), noiseStd);
+    std::uniform_real_distribution<double> uni(-coordExtent, coordExtent);
+    std::normal_distribution<double> gauss(0.0, noiseStd);
 
-    Matrix<Scalar, Dynamic, Dynamic> points(N, n);
+    Matrix<double, Dynamic, Dynamic> points(N, n);
 
     for (int i = 0; i < N; ++i) {
         // sample local coordinates
-        Matrix<Scalar, Dynamic, 1> local(k);
+        Matrix<double, Dynamic, 1> local(k);
         for (int j = 0; j < k; ++j) local(j) = uni(rng);
 
         // map to ambient
-        Matrix<Scalar, Dynamic, 1> p = flat.pointFromCoords(local);
+        Matrix<double, Dynamic, 1> p = flat.pointFromCoords(local);
 
         // add noise in ambient coords
         for (int j = 0; j < n; ++j) p(j) += gauss(rng);
@@ -113,31 +111,27 @@ generateNoisyFlatSamples(const Flat<Scalar>& flat,
 //_____________________________________________________________
 //2) Sample N noisy planes from an arbitrary-dimensional flat
 //
-template <typename Scalar = double, class URNG>
-std::vector<Flat<Scalar>> generateRandomFlats(int numFlats,
+//template <typename Scalar = double, class URNG>
+std::vector<Flat<double>> generateRandomFlats(int numFlats,
                                               int ambientDim,
                                               int flatDim,
-                                              Scalar originSpread,
-                                              URNG& rng) {
-    using namespace Eigen;
-    using Vec = Matrix<Scalar, Dynamic, 1>;
-    using Mat = Matrix<Scalar, Dynamic, Dynamic>;
-
+                                              double originSpread,
+                                              std::mt19937& rng) {
     if (numFlats <= 0) throw std::invalid_argument("numFlats must be > 0");
     if (flatDim <= 0 || flatDim >= ambientDim) throw std::invalid_argument("flatDim must be in (0, ambientDim)");
 
-    std::vector<Flat<Scalar>> flats;
-    std::uniform_real_distribution<Scalar> uni(-originSpread, originSpread);
+    std::vector<Flat<double>> flats;
+    std::uniform_real_distribution<double> uni(-originSpread, originSpread);
 
     for (int i = 0; i < numFlats; ++i) {
         // Random origin
-        Vec origin = Vec::NullaryExpr(ambientDim, [&]() { return uni(rng); });
+        Eigen::Matrix<double, Eigen::Dynamic, 1> origin = Eigen::Matrix<double, Eigen::Dynamic, 1>::NullaryExpr(ambientDim, [&]() { return uni(rng); });
 
         // Random basis (ambientDim x flatDim), orthonormalized
-        Mat B = Mat::Random(ambientDim, flatDim);
-        HouseholderQR<Mat> qr(B);
-        Mat B_orth = qr.householderQ() * Mat::Identity(ambientDim, flatDim);
-
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> B = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Random(ambientDim, flatDim);
+        Eigen::HouseholderQR<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> qr(B);
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> B_orth = qr.householderQ() * Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Identity(ambientDim, flatDim);
+        // origin orthonormalized, O - B_ortho*B_ortho^T*O
         flats.emplace_back(origin, B_orth);
     }
 
@@ -146,13 +140,13 @@ std::vector<Flat<Scalar>> generateRandomFlats(int numFlats,
 // ------------------------------------------------------------
 // Helpers to build mesh/curve for k = 2 / k = 1 in 3D
 // ------------------------------------------------------------
-template <typename Scalar = double>
-void buildPlanePatchMesh(const Flat<Scalar>& plane,
-                         Scalar s,
+//template <typename Scalar = double>
+void buildPlanePatchMesh(const Flat<double>& plane,
+                         double s,
                          int res,
-                         Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>& V,
+                         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& V,
                          Eigen::MatrixXi& F) {
-    using namespace Eigen;
+    //using namespace Eigen;
     if (plane.dimension() != 2 || plane.ambientDimension() != 3) {
         throw std::runtime_error("buildPlanePatchMesh: needs k=2, n=3");
     }
@@ -165,9 +159,9 @@ void buildPlanePatchMesh(const Flat<Scalar>& plane,
 
     for (int i = 0; i < res; ++i) {
         for (int j = 0; j < res; ++j) {
-            Scalar u = -s + 2.0 * s * Scalar(i) / Scalar(res - 1);
-            Scalar v = -s + 2.0 * s * Scalar(j) / Scalar(res - 1);
-            Matrix<Scalar, 2, 1> uv; uv << u, v;
+            double u = -s + 2.0 * s * double(i) / double(res - 1);
+            double v = -s + 2.0 * s * double(j) / double(res - 1);
+            Eigen::Matrix<double, 2, 1> uv; uv << u, v;
             auto p = plane.pointFromCoords(uv);
             V.row(idx(i, j)) = p.transpose();
         }
@@ -186,11 +180,11 @@ void buildPlanePatchMesh(const Flat<Scalar>& plane,
     }
 }
 
-template <typename Scalar = double>
-void buildLinePatchCurve(const Flat<Scalar>& line,
-                         Scalar s,
+//template <typename Scalar = double>
+void buildLinePatchCurve(const Flat<double>& line,
+                         double s,
                          int res,
-                         Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>& V,
+                         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& V,
                          Eigen::MatrixXi& E) {
     using namespace Eigen;
     if (line.dimension() != 1 || line.ambientDimension() != 3) {
@@ -200,8 +194,8 @@ void buildLinePatchCurve(const Flat<Scalar>& line,
     E.resize(res - 1, 2);
 
     for (int i = 0; i < res; ++i) {
-        Scalar u = -s + 2.0 * s * Scalar(i) / Scalar(res - 1);
-        Matrix<Scalar, 1, 1> coord; coord << u;
+        double u = -s + 2.0 * s * double(i) / double(res - 1);
+        Matrix<double, 1, 1> coord; coord << u;
         auto p = line.pointFromCoords(coord);
         V.row(i) = p.transpose();
     }
@@ -222,7 +216,7 @@ void visualizeFlatSamples3D(const Flat<Scalar>& flat,
                             const std::string& namePrefix,
                             Scalar patchHalfSize = 1.0,
                             int res = 15) {
-    using namespace Eigen;
+    //using namespace Eigen;
 
     const int n = flat.ambientDimension();
     const int k = flat.dimension();
@@ -236,8 +230,8 @@ void visualizeFlatSamples3D(const Flat<Scalar>& flat,
     pc->setPointRadius(0.005);
 
     if (k == 2) {
-        Matrix<Scalar, Dynamic, Dynamic> V;
-        MatrixXi F;
+        Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> V;
+        Eigen::MatrixXi F;
         buildPlanePatchMesh(flat, patchHalfSize, res, V, F);
 
         auto mesh = polyscope::registerSurfaceMesh(namePrefix + " flat patch",
@@ -246,8 +240,8 @@ void visualizeFlatSamples3D(const Flat<Scalar>& flat,
         mesh->setTransparency(0.5f);
         mesh->setSurfaceColor(glm::vec3(0.2f, 0.6f, 1.0f));
     } else if (k == 1) {
-        Matrix<Scalar, Dynamic, Dynamic> V;
-        MatrixXi E;
+        Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic> V;
+        Eigen::MatrixXi E;
         buildLinePatchCurve(flat, patchHalfSize, res, V, E);
 
         auto curve = polyscope::registerCurveNetwork(namePrefix + " flat line",
@@ -273,7 +267,7 @@ inline void buildPlaneMesh(const Flat<>& plane,
                            int res,
                            Eigen::MatrixXd& V,
                            Eigen::MatrixXi& F) {
-    using namespace Eigen;
+    //using namespace Eigen;
 
     const int nV = res * res;
     const int nF = 2 * (res - 1) * (res - 1);

@@ -28,7 +28,7 @@ int main() {
     using Vec    = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
     using Mat    = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
-    std::default_random_engine rng(42);
+    std::mt19937 rng(std::random_device{}());
     int    N           = 300;
     double coordExtent = 1.0;
     double noiseStd    = 0.2;
@@ -97,19 +97,16 @@ int main() {
         return 1;
     }
 
-    std::mt19937 rng2(311); // or seeded however you like
+    std::mt19937 rng2(311);
     int numPlanes = 30;
     int ambientDim = 3;
     int flatDim = 2;
     double originSpread = 3.0;
 
     std::vector<Flat<>> planes = generateRandomFlats(numPlanes, ambientDim, flatDim, originSpread, rng2);
-
-    // Optional: visualize or sample from them
     for (int i = 0; i < planes.size(); ++i) {
         visualizeFlatSamples3D(planes[i], {}, "Plane_" + std::to_string(i), 1.0, 15);
     }
-
 
     polyscope::show();
     return 0;
