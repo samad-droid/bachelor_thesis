@@ -12,18 +12,15 @@
 #include "external/polyscope/include/polyscope/polyscope.h"
 #include <glm/glm.hpp>
 
-using Vec3 = Eigen::Vector3d;
-using PointList = std::vector<Vec3>;
-
 // Structure to hold a line model and its inliers
 struct LineModel {
-    Vec3 a, b; // points defining the line segment
+    Eigen::Vector3d a, b; // points defining the line segment
     std::vector<int> inliers;
 };
 
 // Load 3D points (x, y, z) from CSV file
-inline PointList loadCSV(const std::string& filename) {
-    PointList points;
+inline std::vector<Eigen::Vector3d> loadCSV(const std::string& filename) {
+    std::vector<Eigen::Vector3d> points;
     std::ifstream file(filename);
     std::string line;
 
@@ -48,14 +45,14 @@ inline PointList loadCSV(const std::string& filename) {
 }
 
 // Compute perpendicular distance from point p to line through (a, b)
-inline double pointLineDistance(const Vec3& p, const Vec3& a, const Vec3& b) {
-    Vec3 ab = b - a;
-    Vec3 ap = p - a;
+inline double pointLineDistance(const Eigen::Vector3d& p, const Eigen::Vector3d& a, const Eigen::Vector3d& b) {
+    Eigen::Vector3d ab = b - a;
+    Eigen::Vector3d ap = p - a;
     return (ab.cross(ap)).norm() / ab.norm();
 }
 
 // Run RANSAC to fit a line to the point cloud
-inline LineModel ransacLine(const PointList& points, int iterations, double threshold) {
+inline LineModel ransacLine(const std::vector<Eigen::Vector3d>& points, int iterations, double threshold) {
     std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<> dist(0, static_cast<int>(points.size()) - 1);
 
@@ -66,8 +63,8 @@ inline LineModel ransacLine(const PointList& points, int iterations, double thre
         int idx1 = dist(rng), idx2 = dist(rng);
         if (idx1 == idx2) continue;
 
-        Vec3 a = points[idx1];
-        Vec3 b = points[idx2];
+        Eigen::Vector3d a = points[idx1];
+        Eigen::Vector3d b = points[idx2];
 
         std::vector<int> inliers;
         for (int j = 0; j < points.size(); ++j) {
@@ -88,8 +85,8 @@ inline LineModel ransacLine(const PointList& points, int iterations, double thre
 constexpr int MIN_INLIERS = 50;
 
 // Remove inliers from point set
-inline PointList removeInliers(const PointList& points, const std::vector<int>& inliers) {
-    PointList remaining;
+inline std::vector<Eigen::Vector3d> removeInliers(const std::vector<Eigen::Vector3d>& points, const std::vector<int>& inliers) {
+    std::vector<Eigen::Vector3d> remaining;
     std::unordered_set<int> inlierSet(inliers.begin(), inliers.end());
     for (int i = 0; i < points.size(); ++i) {
         if (inlierSet.find(i) == inlierSet.end()) {
@@ -100,7 +97,7 @@ inline PointList removeInliers(const PointList& points, const std::vector<int>& 
 }
 
 // Multi-line RANSAC: iteratively find lines and remove inliers
-inline std::vector<LineModel> multiRansacLines(PointList data, int iterations, double threshold) {
+inline std::vector<LineModel> multiRansacLines(std::vector<Eigen::Vector3d> data, int iterations, double threshold) {
     std::vector<LineModel> detectedLines;
 
     while (true) {
@@ -120,11 +117,11 @@ inline std::vector<LineModel> multiRansacLines(PointList data, int iterations, d
 }
 
 // Save inliers of the best model to a CSV
-inline void saveLineModel(const LineModel& model, const PointList& points, const std::string& filename) {
+inline void saveLineModel(const LineModel& model, const std::vector<Eigen::Vector3d>& points, const std::string& filename) {
     std::ofstream out(filename);
     out << "x,y,z\n";
     for (int idx : model.inliers) {
-        const Vec3& p = points[idx];
+        const Eigen::Vector3d& p = points[idx];
         out << p.x() << "," << p.y() << "," << p.z() << "\n";
     }
     std::cout << "Saved best line inliers to: " << filename << "\n";
@@ -140,7 +137,7 @@ inline void saveLinesToCSV(const std::vector<LineModel>& lines, const std::strin
     out << "px,py,pz,dx,dy,dz\n";  // point and direction
 
     for (const auto& line : lines) {
-        Vec3 dir = (line.b - line.a).normalized();
+        Eigen::Vector3d dir = (line.b - line.a).normalized();
         out << line.a.x() << "," << line.a.y() << "," << line.a.z() << ",";
         out << dir.x() << "," << dir.y() << "," << dir.z() << "\n";
     }

@@ -102,7 +102,7 @@ int main() {
     savePointsToCSV("../generated_data2.csv", allPoints, clusterLabels);
 
     try {
-        PointList allPoints = loadCSV("../generated_data.csv");
+        std::vector<Eigen::Vector3d> allPoints = loadCSV("../generated_data.csv");
 
         auto detectedLines = multiRansacLines(allPoints, 1000, 0.38);
         saveLinesToCSV(detectedLines, "../detected_lines.csv");
@@ -119,7 +119,7 @@ int main() {
             // Visualize inliers separately
             std::vector<glm::vec3> inlierPoints;
             for (int idx : line.inliers) {
-                const Vec3& p = allPoints[idx];
+                const Eigen::Vector3d& p = allPoints[idx];
                 inlierPoints.push_back(glm::vec3(static_cast<float>(p.x()), static_cast<float>(p.y()), static_cast<float>(p.z())));
             }
             polyscope::registerPointCloud("Line " + std::to_string(i) + " Inliers", inlierPoints);

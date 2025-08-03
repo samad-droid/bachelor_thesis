@@ -16,13 +16,11 @@
 #include <glm/glm.hpp>
 
 // ------------------------------------------------------------
-// Flat<T> (moved from your working version, but cleaned a bit)
+// Flat<T>
 // ------------------------------------------------------------
 template <typename Scalar = double>
 class Flat {
 public:
-    using Vector = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
-    using Matrix = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
 
     Flat(const Eigen::Matrix<double, Eigen::Dynamic, 1>& origin, const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& basis)
         : origin_(origin), basis_(basis) {
@@ -146,7 +144,6 @@ void buildPlanePatchMesh(const Flat<double>& plane,
                          int res,
                          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& V,
                          Eigen::MatrixXi& F) {
-    //using namespace Eigen;
     if (plane.dimension() != 2 || plane.ambientDimension() != 3) {
         throw std::runtime_error("buildPlanePatchMesh: needs k=2, n=3");
     }
