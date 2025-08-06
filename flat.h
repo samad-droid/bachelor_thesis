@@ -35,18 +35,23 @@ public:
     int dimension() const        { return static_cast<int>(basis_.cols()); }
     int ambientDimension() const { return static_cast<int>(basis_.rows()); }
 
+    // orthogonal projection
+    Eigen::Matrix<double, Eigen::Dynamic, 1> project(const Eigen::Matrix<double, Eigen::Dynamic, 1>& point) const {
+        // point must be in the ambient space of the flat
+        assert(point.size() == origin_.size());
+        Eigen::Matrix<double, Eigen::Dynamic, 1> diff  = point - origin_;
+        Eigen::Matrix<double, Eigen::Dynamic, 1> proj  = basis_.transpose() * diff;
+        return origin_ + basis_ * proj;
+    }
+
+    // whether orthogonal projection is close to flat
     bool contains(const Eigen::Matrix<double, Eigen::Dynamic, 1>& point, double eps = double(1e-8)) const {
+        // point must be in the ambient space of the flat
+        assert(point.size() == origin_.size());
         Eigen::Matrix<double, Eigen::Dynamic, 1> diff      = point - origin_;
         Eigen::Matrix<double, Eigen::Dynamic, 1> proj      = basis_.transpose() * diff;
         Eigen::Matrix<double, Eigen::Dynamic, 1> flatPoint = origin_ + basis_ * proj;
         return (point - flatPoint).norm() < eps;
-    }
-
-    // orthogonal projection
-    Eigen::Matrix<double, Eigen::Dynamic, 1> project(const Eigen::Matrix<double, Eigen::Dynamic, 1>& point) const {
-        Eigen::Matrix<double, Eigen::Dynamic, 1> diff  = point - origin_;
-        Eigen::Matrix<double, Eigen::Dynamic, 1> proj  = basis_.transpose() * diff;
-        return origin_ + basis_ * proj;
     }
 
     // from local coordinates to ambient point
@@ -77,28 +82,22 @@ generateNoisyFlatSamples(const Flat<double>& flat,
                          double coordExtent,   // sample local coords u in [-coordExtent, coordExtent]^k
                          double noiseStd,      // Gaussian noise std-dev in the ambient space
                          std::mt19937& rng) {
-    using namespace Eigen;
-
     const int k = flat.dimension();
     const int n = flat.ambientDimension();
-
     if (N <= 0) throw std::invalid_argument("N must be > 0");
     if (k <= 0) throw std::invalid_argument("Flat dimension must be > 0");
 
     std::uniform_real_distribution<double> uni(-coordExtent, coordExtent);
     std::normal_distribution<double> gauss(0.0, noiseStd);
 
-    Matrix<double, Dynamic, Dynamic> points(N, n);
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> points(N, n);
 
+    // create local coordinates around given flat with uniform distribution uni,
+    // transofrm them into coordinates in ambient space and add noise noiseStd
     for (int i = 0; i < N; ++i) {
-        // sample local coordinates
-        Matrix<double, Dynamic, 1> local(k);
+        Eigen::Matrix<double, Eigen::Dynamic, 1> local(k);
         for (int j = 0; j < k; ++j) local(j) = uni(rng);
-
-        // map to ambient
-        Matrix<double, Dynamic, 1> p = flat.pointFromCoords(local);
-
-        // add noise in ambient coords
+        Eigen::Matrix<double, Eigen::Dynamic, 1> p = flat.pointFromCoords(local);
         for (int j = 0; j < n; ++j) p(j) += gauss(rng);
 
         points.row(i) = p.transpose();
@@ -145,7 +144,7 @@ void buildPlanePatchMesh(const Flat<double>& plane,
                          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& V,
                          Eigen::MatrixXi& F) {
     if (plane.dimension() != 2 || plane.ambientDimension() != 3) {
-        throw std::runtime_error("buildPlanePatchMesh: needs k=2, n=3");
+        throw std::runtime_error("buildPlanePatchMesh: needs dimension of flat=2, dimension of ambient space=3");
     }
     const int nV = res * res;
     const int nF = 2 * (res - 1) * (res - 1);
@@ -183,16 +182,16 @@ void buildLinePatchCurve(const Flat<double>& line,
                          int res,
                          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& V,
                          Eigen::MatrixXi& E) {
-    using namespace Eigen;
+
     if (line.dimension() != 1 || line.ambientDimension() != 3) {
-        throw std::runtime_error("buildLinePatchCurve: needs k=1, n=3");
+        throw std::runtime_error("buildLinePatchCurve: needs needs dimension of flat=1, dimension of ambient space=3");
     }
     V.resize(res, 3);
     E.resize(res - 1, 2);
 
     for (int i = 0; i < res; ++i) {
         double u = -s + 2.0 * s * double(i) / double(res - 1);
-        Matrix<double, 1, 1> coord; coord << u;
+        Eigen::Matrix<double, 1, 1> coord; coord << u;
         auto p = line.pointFromCoords(coord);
         V.row(i) = p.transpose();
     }
@@ -213,7 +212,6 @@ void visualizeFlatSamples3D(const Flat<Scalar>& flat,
                             const std::string& namePrefix,
                             Scalar patchHalfSize = 1.0,
                             int res = 15) {
-    //using namespace Eigen;
 
     const int n = flat.ambientDimension();
     const int k = flat.dimension();
@@ -252,7 +250,7 @@ void visualizeFlatSamples3D(const Flat<Scalar>& flat,
         V = flat.project(flat.origin()).transpose();
         polyscope::registerPointCloud(namePrefix + " flat (0D)", V.template cast<double>());
     } else {
-        throw std::runtime_error("visualizeFlatSamples3D: only k = 0,1,2 are visualized.");
+        throw std::runtime_error("visualizeFlatSamples3D: only dimension = 0,1,2 are visualized.");
     }
 }
 
@@ -264,7 +262,6 @@ inline void buildPlaneMesh(const Flat<>& plane,
                            int res,
                            Eigen::MatrixXd& V,
                            Eigen::MatrixXi& F) {
-    //using namespace Eigen;
 
     const int nV = res * res;
     const int nF = 2 * (res - 1) * (res - 1);
