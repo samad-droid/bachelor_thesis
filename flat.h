@@ -299,3 +299,54 @@ inline void buildPlaneMesh(const Flat<>& plane,
         }
     }
 }
+
+// Save points and their cluster ID to a CSV file
+void savePointsToCSV(const std::string& filename,
+                     const std::vector<Eigen::MatrixXd>& allPoints,
+                     const std::vector<int>& clusterLabels) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+
+    // Determine ambient dimension from first batch of points
+    if (allPoints.empty()) {
+        throw std::runtime_error("No points to save.");
+    }
+    int ambientDim = allPoints[0].cols();
+
+    // Write header: x0,x1,...,x{ambientDim-1},cluster
+    for (int d = 0; d < ambientDim; ++d) {
+        file << "x" << d << ",";
+    }
+    file << "cluster\n";
+
+    // Write points
+    for (size_t i = 0; i < allPoints.size(); ++i) {
+        const auto& mat = allPoints[i];
+        int cluster = clusterLabels[i];
+        for (int j = 0; j < mat.rows(); ++j) {
+            for (int d = 0; d < ambientDim; ++d) {
+                file << mat(j, d);
+                if (d < ambientDim - 1) file << ",";
+            }
+            file << "," << cluster << "\n";
+        }
+    }
+    file.close();
+    std::cout << "Saved CSV to " << filename << "\n";
+}
+
+// Helper function to compute mean projection error
+double computeMeanProjectionError(const Eigen::MatrixXd& noisyPts, const Flat<>& flat) {
+    double totalError = 0.0;
+    int N = noisyPts.rows();
+    for (int i = 0; i < N; ++i) {
+        Eigen::VectorXd x = noisyPts.row(i).transpose();
+        Eigen::VectorXd proj = flat.project(x);
+        double err = (x - proj).norm();
+        totalError += err;
+    }
+    return totalError / static_cast<double>(N);
+}
+

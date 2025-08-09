@@ -81,9 +81,6 @@ inline LineModel ransacLine(const std::vector<Eigen::Vector3d>& points, int iter
     return bestModel;
 }
 
-// Minimum inliers to accept a line during multi-line RANSAC
-constexpr int MIN_INLIERS = 50;
-
 // Remove inliers from point set
 inline std::vector<Eigen::Vector3d> removeInliers(const std::vector<Eigen::Vector3d>& points, const std::vector<int>& inliers) {
     std::vector<Eigen::Vector3d> remaining;
@@ -97,15 +94,15 @@ inline std::vector<Eigen::Vector3d> removeInliers(const std::vector<Eigen::Vecto
 }
 
 // Multi-line RANSAC: iteratively find lines and remove inliers
-inline std::vector<LineModel> multiRansacLines(std::vector<Eigen::Vector3d> data, int iterations, double threshold) {
+inline std::vector<LineModel> multiRansacLines(std::vector<Eigen::Vector3d> data, int iterations, double threshold, int min_inliers) {
     std::vector<LineModel> detectedLines;
 
     while (true) {
-        if (data.size() < MIN_INLIERS) break;  // Not enough points to fit a line
+        if (data.size() < min_inliers) break;  // Not enough points to fit a line
 
         LineModel best = ransacLine(data, iterations, threshold);
 
-        if (best.inliers.size() < MIN_INLIERS) break;  // No meaningful line found
+        if (best.inliers.size() < min_inliers) break;  // No meaningful line found
 
         detectedLines.push_back(best);
 
