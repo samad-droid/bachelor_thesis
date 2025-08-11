@@ -10,7 +10,8 @@
 #include "external/eigen/Eigen/Dense"
 
 #include "flat.h"
-#include "ransac_multiD.h"  // ← using the generic version now
+#include "ransac_multiD.h"
+#include "experiment_config.h"
 
 int main() {
     polyscope::init();
@@ -56,22 +57,6 @@ int main() {
         }
     }*/
 
-    const int ambientDim = 3;
-    const int numFlats = 5;
-    const double originSpread = 6.0;
-    const double coordExtent = 1.0;
-    const double noiseStd = 0.2;
-    const int numDataPointsPerFlat = 300;
-
-    constexpr int MIN_INLIERS       = 50;
-    constexpr int RANSAC_ITERATIONS = 1000;
-    constexpr double RANSAC_THRESHOLD = 0.38;
-    constexpr int FIXED_DIMENSION = 1;
-
-    std::random_device rd;
-    std::mt19937 rng(rd());
-    std::uniform_int_distribution<int> flatDimDist(1, ambientDim - 1);
-
     std::vector<Eigen::MatrixXd> allPoints;
     std::vector<int> clusterLabels;
     int clusterId = 0;
@@ -88,7 +73,6 @@ int main() {
         double err = computeMeanProjectionError(pts, flat);
         std::cout << "Random Flat " << i << " (dim=" << flatDim << "): Mean projection error = " << err << "\n";
 
-        // Visualization only possible if ambientDim == 3 (your visualize function expects that)
         if (ambientDim == 3) {
             visualizeFlatSamples3D(flat, pts, "Random Flat " + std::to_string(i), 1.0, 20);
         } else {
@@ -99,7 +83,7 @@ int main() {
         clusterLabels.push_back(clusterId++);
     }
 
-    savePointsToCSV("../generated_data2.csv", allPoints, clusterLabels);
+    savePointsToCSV(pointsCSV, allPoints, clusterLabels);
 
     try {
         // Flatten all Eigen::MatrixXd clusters into a single vector<Eigen::VectorXd>
@@ -112,7 +96,7 @@ int main() {
 
         // Run multi-model RANSAC
         auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
-        saveSubspacesToCSV(detectedModels, "../detected_subspaces.csv");
+        saveSubspacesToCSV(detectedModels, ransacCSV);
 
         std::cout << "Detected " << detectedModels.size() << " subspaces\n";
 
@@ -122,11 +106,9 @@ int main() {
             std::cout << "Model " << i << ": dim=" << model.basis.cols()
                       << ", inliers=" << model.inliers.size() << "\n";
 
-            // Only visualize if 3D data
             if (model.origin.size() == 3) {
                 visualizeSubspace3D(model, "RANSAC Subspace " + std::to_string(i));
 
-                // Visualize inlier points
                 std::vector<glm::vec3> inlierPoints;
                 for (int idx : model.inliers) {
                     const Eigen::VectorXd& p = allVecPoints[idx];
