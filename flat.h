@@ -1,14 +1,9 @@
 #pragma once
-
-// ===== core =====
 #include <Eigen/Dense>
 #include <cassert>
 #include <iostream>
 #include <random>
 #include <stdexcept>
-
-// ===== polyscope =====
-// adjust the include paths to wherever polyscope lives in your tree
 #include "external/polyscope/include/polyscope/polyscope.h"
 #include "external/polyscope/include/polyscope/point_cloud.h"
 #include "external/polyscope/include/polyscope/surface_mesh.h"
@@ -24,34 +19,22 @@ public:
 
     Flat(const Eigen::Matrix<double, Eigen::Dynamic, 1>& origin, const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& basis)
         : origin_(origin), basis_(basis) {
-        assert(basis_.cols() <= basis_.rows());
+        assert((basis_.cols() <= basis_.rows()) && "Number of basis vectors needs to be lower than dimension of ambient space");
     }
 
     // accessors
     const Eigen::Matrix<double, Eigen::Dynamic, 1>& origin() const { return origin_; }
     const Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& basis()  const { return basis_; }
 
-    // dimensions
-    int dimension() const        { return static_cast<int>(basis_.cols()); }
+    int flatDimension() const        { return static_cast<int>(basis_.cols()); }
     int ambientDimension() const { return static_cast<int>(basis_.rows()); }
 
     // orthogonal projection
     Eigen::Matrix<double, Eigen::Dynamic, 1> project(const Eigen::Matrix<double, Eigen::Dynamic, 1>& point) const {
-        // point must be in the ambient space of the flat
-        assert(point.size() == origin_.size());
+        assert((point.size() == origin_.size()) && "Point must be in the ambient space of the flat");
         Eigen::Matrix<double, Eigen::Dynamic, 1> diff  = point - origin_;
         Eigen::Matrix<double, Eigen::Dynamic, 1> proj  = basis_.transpose() * diff;
         return origin_ + basis_ * proj;
-    }
-
-    // whether orthogonal projection is close to flat
-    bool contains(const Eigen::Matrix<double, Eigen::Dynamic, 1>& point, double eps = double(1e-8)) const {
-        // point must be in the ambient space of the flat
-        assert(point.size() == origin_.size());
-        Eigen::Matrix<double, Eigen::Dynamic, 1> diff      = point - origin_;
-        Eigen::Matrix<double, Eigen::Dynamic, 1> proj      = basis_.transpose() * diff;
-        Eigen::Matrix<double, Eigen::Dynamic, 1> flatPoint = origin_ + basis_ * proj;
-        return (point - flatPoint).norm() < eps;
     }
 
     // from local coordinates to ambient point
@@ -61,7 +44,7 @@ public:
     }
 
     void print() const {
-        std::cout << "Flat of dimension " << dimension()
+        std::cout << "Flat of dimension " << flatDimension()
                   << " in ambient dimension " << ambientDimension() << "\n";
         std::cout << "Origin:\n" << origin_.transpose() << "\n";
         std::cout << "Basis vectors (columns):\n" << basis_ << "\n";
@@ -73,16 +56,16 @@ private:
 };
 
 // ------------------------------------------------------------
-// 1) Sample N noisy points from an arbitrary-dimensional flat
+// 1) Sample N noisy points from a k-dimensional flat with local coordinates [-coordExt, coordExt]
 // ------------------------------------------------------------
-//template <typename Scalar = double, class URNG>
 Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>
 generateNoisyFlatSamples(const Flat<double>& flat,
                          int N,
-                         double coordExtent,   // sample local coords u in [-coordExtent, coordExtent]^k
-                         double noiseStd,      // Gaussian noise std-dev in the ambient space
+                         double coordExtent,
+                         double noiseStd,
                          std::mt19937& rng) {
-    const int k = flat.dimension();
+
+    const int k = flat.flatDimension();
     const int n = flat.ambientDimension();
     if (N <= 0) throw std::invalid_argument("N must be > 0");
     if (k <= 0) throw std::invalid_argument("Flat dimension must be > 0");
@@ -93,7 +76,7 @@ generateNoisyFlatSamples(const Flat<double>& flat,
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> points(N, n);
 
     // create local coordinates around given flat with uniform distribution uni,
-    // transofrm them into coordinates in ambient space and add noise noiseStd
+    // transform them into coordinates in ambient space and add noise
     for (int i = 0; i < N; ++i) {
         Eigen::Matrix<double, Eigen::Dynamic, 1> local(k);
         for (int j = 0; j < k; ++j) local(j) = uni(rng);
@@ -105,10 +88,9 @@ generateNoisyFlatSamples(const Flat<double>& flat,
 
     return points;
 }
-//_____________________________________________________________
-//2) Sample N noisy planes from an arbitrary-dimensional flat
-//
-//template <typename Scalar = double, class URNG>
+//-------------------------------------------------------------
+//2) Sample N noisy Flats with random origin point (ambientDim x 1) and basis matrix (ambientDim x flatDim)
+//-------------------------------------------------------------
 std::vector<Flat<double>> generateRandomFlats(int numFlats,
                                               int ambientDim,
                                               int flatDim,
@@ -123,7 +105,6 @@ std::vector<Flat<double>> generateRandomFlats(int numFlats,
     for (int i = 0; i < numFlats; ++i) {
         // Random origin
         Eigen::Matrix<double, Eigen::Dynamic, 1> origin = Eigen::Matrix<double, Eigen::Dynamic, 1>::NullaryExpr(ambientDim, [&]() { return uni(rng); });
-
         // Random basis (ambientDim x flatDim), orthonormalized
         Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> B = Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>::Random(ambientDim, flatDim);
         Eigen::HouseholderQR<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> qr(B);
@@ -137,13 +118,12 @@ std::vector<Flat<double>> generateRandomFlats(int numFlats,
 // ------------------------------------------------------------
 // Helpers to build mesh/curve for k = 2 / k = 1 in 3D
 // ------------------------------------------------------------
-//template <typename Scalar = double>
 void buildPlanePatchMesh(const Flat<double>& plane,
                          double s,
                          int res,
                          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& V,
                          Eigen::MatrixXi& F) {
-    if (plane.dimension() != 2 || plane.ambientDimension() != 3) {
+    if (plane.flatDimension() != 2 || plane.ambientDimension() != 3) {
         throw std::runtime_error("buildPlanePatchMesh: needs dimension of flat=2, dimension of ambient space=3");
     }
     const int nV = res * res;
@@ -176,14 +156,13 @@ void buildPlanePatchMesh(const Flat<double>& plane,
     }
 }
 
-//template <typename Scalar = double>
 void buildLinePatchCurve(const Flat<double>& line,
                          double s,
                          int res,
                          Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>& V,
                          Eigen::MatrixXi& E) {
 
-    if (line.dimension() != 1 || line.ambientDimension() != 3) {
+    if (line.flatDimension() != 1 || line.ambientDimension() != 3) {
         throw std::runtime_error("buildLinePatchCurve: needs needs dimension of flat=1, dimension of ambient space=3");
     }
     V.resize(res, 3);
@@ -201,7 +180,7 @@ void buildLinePatchCurve(const Flat<double>& line,
 }
 
 // ------------------------------------------------------------
-// 2) Visualize in 3D (throws if ambient dimension != 3)
+// 2) Visualize in 3D (throws error if ambient dimension != 3)
 //    - k = 2: show a plane patch + point cloud
 //    - k = 1: show a line segment + point cloud
 //    - k = 0: just the origin
@@ -214,13 +193,12 @@ void visualizeFlatSamples3D(const Flat<Scalar>& flat,
                             int res = 15) {
 
     const int n = flat.ambientDimension();
-    const int k = flat.dimension();
+    const int k = flat.flatDimension();
 
     if (n != 3) {
         throw std::runtime_error("visualizeFlatSamples3D: ambient dimension must be 3, failing as requested.");
     }
 
-    // register the scattered points
     auto pc = polyscope::registerPointCloud(namePrefix + " points", points.template cast<double>());
     pc->setPointRadius(0.005);
 
@@ -319,7 +297,7 @@ void savePointsToCSV(const std::string& filename,
     for (int d = 0; d < ambientDim; ++d) {
         file << "x" << d << ",";
     }
-    file << "cluster\n";
+    file << "flat number\n";
 
     // Write points
     for (size_t i = 0; i < allPoints.size(); ++i) {
@@ -337,7 +315,6 @@ void savePointsToCSV(const std::string& filename,
     std::cout << "Saved CSV to " << filename << "\n";
 }
 
-// Helper function to compute mean projection error
 double computeMeanProjectionError(const Eigen::MatrixXd& noisyPts, const Flat<>& flat) {
     double totalError = 0.0;
     int N = noisyPts.rows();

@@ -75,7 +75,6 @@ inline AffineSubspaceModel ransacAffine(const std::vector<Eigen::VectorXd>& poin
 
     AffineSubspaceModel bestModel;
     int bestInlierCount = 0;
-
     const int ambientDim = points[0].size();
 
     for (int iter = 0; iter < iterations; ++iter) {
@@ -161,7 +160,7 @@ inline void saveSubspacesToCSV(const std::vector<AffineSubspaceModel>& models,
     std::cout << "Saved " << models.size() << " subspaces to " << filename << "\n";
 }
 
-// ===== Optional 3D visualization =====
+// ===== 3D visualization =====
 void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& name) {
     int dim = model.basis.cols();
     if (dim < 1 || dim > 3) {
