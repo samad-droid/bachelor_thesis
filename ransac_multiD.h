@@ -15,9 +15,10 @@
 
 // ===== Model definition =====
 struct AffineSubspaceModel {
-    Eigen::VectorXd origin;          // point on subspace
-    Eigen::MatrixXd basis;           // columns = orthonormal basis vectors
-    std::vector<int> inliers;        // indices of inliers in the original dataset
+    Eigen::VectorXd origin;                  // point on subspace
+    Eigen::MatrixXd basis;                   // columns = orthonormal basis vectors
+    std::unordered_set<int> inliers;         // indices of inliers
+    int clusterId = -1;
 };
 
 // ===== CSV loader for any dimension =====
@@ -96,10 +97,10 @@ inline AffineSubspaceModel ransacAffine(const std::vector<Eigen::VectorXd>& poin
         auto model = fitAffineSubspace(sample);
         model.basis = model.basis.leftCols(k);
 
-        std::vector<int> inliers;
+        std::unordered_set<int> inliers;
         for (int i = 0; i < points.size(); ++i) {
             if (pointSubspaceDistance(points[i], model.origin, model.basis) < threshold)
-                inliers.push_back(i);
+                inliers.insert(i);
         }
 
         if ((int)inliers.size() > bestInlierCount && (int)inliers.size() >= min_inliers) {
@@ -114,11 +115,10 @@ inline AffineSubspaceModel ransacAffine(const std::vector<Eigen::VectorXd>& poin
 
 // ===== Remove inliers =====
 inline std::vector<Eigen::VectorXd> removeInliers(const std::vector<Eigen::VectorXd>& points,
-                                                  const std::vector<int>& inliers) {
-    std::unordered_set<int> inlierSet(inliers.begin(), inliers.end());
+                                                  const std::unordered_set<int>& inliers) {
     std::vector<Eigen::VectorXd> remaining;
     for (int i = 0; i < points.size(); ++i)
-        if (inlierSet.find(i) == inlierSet.end()) remaining.push_back(points[i]);
+        if (inliers.find(i) == inliers.end()) remaining.push_back(points[i]);
     return remaining;
 }
 
@@ -137,28 +137,31 @@ inline std::vector<AffineSubspaceModel> multiRansacAffine(std::vector<Eigen::Vec
 }
 
 // ===== Save subspaces to CSV =====
-// Format: origin_x, origin_y, ..., basis_dim, basis_vectors(flat)
 inline void saveSubspacesToCSV(const std::vector<AffineSubspaceModel>& models,
                                const std::string& filename) {
     std::ofstream out(filename);
     if (!out.is_open()) throw std::runtime_error("Cannot open file: " + filename);
 
-    out << "origin...,basis_dim,basis_vectors...\n";
+    out << "cluster_id,origin...,basis_dim,basis_vectors...\n";
     for (const auto& m : models) {
+        out << m.clusterId << ",";
+
         for (int i = 0; i < m.origin.size(); ++i) {
             out << m.origin(i) << ",";
         }
         out << m.basis.cols() << ",";
+
         for (int c = 0; c < m.basis.cols(); ++c) {
             for (int r = 0; r < m.basis.rows(); ++r) {
-                out << m.basis(r,c);
-                if (!(c == m.basis.cols()-1 && r == m.basis.rows()-1)) out << ",";
+                out << m.basis(r, c);
+                if (!(c == m.basis.cols() - 1 && r == m.basis.rows() - 1)) out << ",";
             }
         }
         out << "\n";
     }
     std::cout << "Saved " << models.size() << " subspaces to " << filename << "\n";
 }
+
 
 // ===== 3D visualization =====
 void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& name) {
@@ -171,7 +174,6 @@ void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& na
     Eigen::Vector3d origin = model.origin;
 
     if (dim == 1) {
-        // Draw line segment along basis.col(0)
         Eigen::Vector3d p1 = origin - model.basis.col(0) * 5.0;
         Eigen::Vector3d p2 = origin + model.basis.col(0) * 5.0;
 
@@ -183,7 +185,6 @@ void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& na
         polyscope::registerCurveNetwork(name, points, edges);
 
     } else if (dim == 2) {
-        // Draw plane patch using basis.col(0) and basis.col(1)
         double s = 5.0;
         Eigen::Vector3d u = model.basis.col(0);
         Eigen::Vector3d v = model.basis.col(1);
@@ -201,9 +202,6 @@ void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& na
 
         polyscope::registerCurveNetwork(name + "_plane", squarePoints, squareEdges);
     } else {
-        // 3D subspace visualization - optional, probably not needed for your case
         std::cerr << "3D subspace visualization not implemented\n";
     }
 }
-
-
