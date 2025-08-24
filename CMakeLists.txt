@@ -17,7 +17,8 @@ add_executable(bachelor_thesis main.cpp
         flat.h
         ransac_line.h
         ransac_multiD.h
-        experiment_config.h)
+        experiment_config.h
+        progressive.h)
 
 target_link_libraries(bachelor_thesis
         polyscope

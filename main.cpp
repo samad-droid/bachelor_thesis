@@ -13,6 +13,7 @@
 #include "flat.h"
 #include "ransac_multiD.h"
 #include "experiment_config.h"
+#include "progressive.h"
 
 // ===== Clustering function =====
 std::vector<int> clusterSubspaces(
@@ -86,9 +87,14 @@ int main() {
             }
         }
 
-        // Run multi-model RANSAC
-        auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
-        saveSubspacesToCSV(detectedModels, ransacCSV);
+        auto detectedModels = progressiveAffine(
+                allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
+        std::cout << "Progressive-X detected " << detectedModels.size() << " subspaces\n";
+        /*
+        auto detectedModels = multiRansacAffine(
+                allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
+        std::cout << "Greedy multi-RANSAC detected " << detectedModels.size() << " subspaces\n";
+        */
 
         std::cout << "Detected " << detectedModels.size() << " subspaces\n";
 
@@ -153,7 +159,7 @@ int main() {
         std::cout << "Normalized intersection matrix (by total points):\n" << normalizedMatrix << "\n\n";
 
         // set multiple thresholds
-        std::vector<double> thresholds = {0.065};
+        std::vector<double> thresholds = {0.1};
 
         for (double thr : thresholds) {
             int numClusters = 0;
