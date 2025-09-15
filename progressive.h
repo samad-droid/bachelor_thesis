@@ -7,7 +7,7 @@
 
 #include "ransac_multiD.h"
 
-// Progressive-X
+// Progressive-X with final labeling
 inline std::vector<AffineSubspaceModel> progressiveAffine(
     const std::vector<Eigen::VectorXd>& points,
     int iterations,
@@ -45,7 +45,7 @@ inline std::vector<AffineSubspaceModel> progressiveAffine(
 
         // Build consensus set
         std::unordered_set<int> inliers;
-        for (int i = 0; i < points.size(); ++i) {
+        for (int i = 0; i < (int)points.size(); ++i) {
             if (pointSubspaceDistance(points[i], model.origin, model.basis) < threshold)
                 inliers.insert(i);
         }
@@ -56,9 +56,8 @@ inline std::vector<AffineSubspaceModel> progressiveAffine(
         }
     }
 
-    // === Progressive-X selection ===
+    // === Progressive-X selection (greedy) ===
     std::vector<bool> used(points.size(), false);
-
     for (auto& cand : candidates) {
         int newInliers = 0;
         for (int idx : cand.inliers) {
@@ -68,6 +67,35 @@ inline std::vector<AffineSubspaceModel> progressiveAffine(
         if (newInliers >= min_inliers) {
             models.push_back(cand);
             for (int idx : cand.inliers) used[idx] = true;
+        }
+    }
+
+    // === assign each point exclusively ===
+    int totalPoints = static_cast<int>(points.size());
+    std::vector<int> owner(totalPoints, -1); // owner[p] = index of model, or -1 if outlier
+
+    for (int p = 0; p < totalPoints; ++p) {
+        double bestDist = std::numeric_limits<double>::max();
+        int bestModel = -1;
+        for (int i = 0; i < (int)models.size(); ++i) {
+            double d = pointSubspaceDistance(points[p], models[i].origin, models[i].basis);
+            if (d < threshold && d < bestDist) {
+                bestDist = d;
+                bestModel = i;
+            }
+        }
+        owner[p] = bestModel;
+    }
+
+    // Clear overlapping inlier sets
+    for (auto& m : models) {
+        m.inliers.clear();
+    }
+
+    // Rebuild exclusive inlier sets
+    for (int p = 0; p < totalPoints; ++p) {
+        if (owner[p] != -1) {
+            models[owner[p]].inliers.insert(p);
         }
     }
 
