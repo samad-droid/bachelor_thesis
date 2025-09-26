@@ -14,7 +14,7 @@ inline constexpr int MIN_INLIERS = numDataPointsPerFlat * 0.15;
 inline constexpr int RANSAC_ITERATIONS = 1000;
 inline constexpr double RANSAC_THRESHOLD = 0.45;
 inline constexpr int FIXED_DIMENSION = 1;
-//inline constexpr double JACCARD_THRESHOLD = 0.08;
+inline constexpr double JACCARD_THRESHOLD = 0.08;
 // ===== RNG =====
 inline std::random_device rd;
 inline std::mt19937 rng(632);

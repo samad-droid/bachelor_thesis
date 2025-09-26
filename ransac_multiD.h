@@ -205,3 +205,130 @@ void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& na
         std::cerr << "3D subspace visualization not implemented\n";
     }
 }
+
+// ========================= 2D Visualization Helpers =========================
+
+// visualize points in 2D (embedded in XY plane)
+inline void visualizeFlatSamples2D(const Eigen::MatrixXd& pts, const std::string& name, float radius = 0.01f) {
+    std::vector<glm::vec3> ps;
+    ps.reserve(pts.rows());
+    for (int i = 0; i < pts.rows(); ++i) {
+        float x = static_cast<float>(pts(i, 0));
+        float y = static_cast<float>(pts(i, 1));
+        ps.emplace_back(x, y, 0.0f); // embed in XY plane
+    }
+    auto pc = polyscope::registerPointCloud(name, ps);
+    if (pc) pc->setPointRadius(radius);
+}
+
+// visualize a 2D affine subspace (dim 0, 1, or 2)
+template<typename ModelT>
+inline void visualizeSubspace2D(const ModelT& model,
+                                const std::string& name,
+                                const std::vector<Eigen::VectorXd>& allVecPoints,
+                                double coordExtent = 1.0) {
+    if (model.origin.size() < 2) return;
+    Eigen::Vector2d origin2 = model.origin.head(2).template cast<double>();
+    int subDim = model.basis.cols();
+
+    // 0D: just the origin
+    if (subDim == 0) {
+        std::vector<glm::vec3> pts{{(float)origin2(0), (float)origin2(1), 0.0f}};
+        auto pc = polyscope::registerPointCloud(name + " (origin)", pts);
+        if (pc) pc->setPointRadius(0.05f);
+        return;
+    }
+
+    // 1D: line along basis.col(0)
+    if (subDim == 1) {
+        Eigen::Vector2d dir = model.basis.col(0).head(2).template cast<double>();
+        double nrm = dir.norm();
+        if (nrm < 1e-12) return;
+        dir /= nrm;
+
+        double tmin = 0.0, tmax = 0.0;
+        bool firstT = true;
+        for (int idx : model.inliers) {
+            if (idx < 0 || idx >= (int)allVecPoints.size()) continue;
+            Eigen::Vector2d p2 = allVecPoints[idx].head(2).template cast<double>();
+            double t = dir.dot(p2 - origin2);
+            if (firstT) { tmin = tmax = t; firstT = false; }
+            else { tmin = std::min(tmin, t); tmax = std::max(tmax, t); }
+        }
+        if (firstT) { tmin = -coordExtent; tmax = coordExtent; }
+
+        double span = (tmax - tmin);
+        double margin = std::max(0.1 * std::max(1.0, span), 0.1);
+        double start = tmin - margin;
+        double end = tmax + margin;
+
+        const int SAMPLES = 200;
+        std::vector<glm::vec3> linePts; linePts.reserve(SAMPLES+1);
+        for (int s = 0; s <= SAMPLES; ++s) {
+            double t = start + (end - start) * (double)s / (double)SAMPLES;
+            Eigen::Vector2d pos = origin2 + t * dir;
+            linePts.emplace_back((float)pos(0), (float)pos(1), 0.0f);
+        }
+        auto pc = polyscope::registerPointCloud(name + " (line)", linePts);
+        if (pc) pc->setPointRadius(0.01f);
+        return;
+    }
+
+    // 2D: full plane in XY
+    if (subDim >= 2) {
+        double xmin =  std::numeric_limits<double>::infinity();
+        double xmax = -std::numeric_limits<double>::infinity();
+        double ymin =  std::numeric_limits<double>::infinity();
+        double ymax = -std::numeric_limits<double>::infinity();
+        bool any = false;
+        for (int idx : model.inliers) {
+            if (idx < 0 || idx >= (int)allVecPoints.size()) continue;
+            Eigen::Vector2d p2 = allVecPoints[idx].head(2).template cast<double>();
+            xmin = std::min(xmin, p2(0)); xmax = std::max(xmax, p2(0));
+            ymin = std::min(ymin, p2(1)); ymax = std::max(ymax, p2(1));
+            any = true;
+        }
+        if (!any) { xmin = -coordExtent; xmax = coordExtent; ymin = -coordExtent; ymax = coordExtent; }
+
+        const int NX = 30, NY = 30;
+        std::vector<glm::vec3> grid; grid.reserve(NX*NY);
+        for (int ix = 0; ix < NX; ++ix) {
+            for (int iy = 0; iy < NY; ++iy) {
+                double x = xmin + (xmax - xmin) * ix / double(NX-1);
+                double y = ymin + (ymax - ymin) * iy / double(NY-1);
+                grid.emplace_back((float)x, (float)y, 0.0f);
+            }
+        }
+        auto pc = polyscope::registerPointCloud(name + " (plane)", grid);
+        if (pc) pc->setPointRadius(0.005f);
+    }
+}
+
+// ========================= Clustering Helper =========================
+inline std::vector<int> clusterSubspaces(const Eigen::MatrixXd &jaccardMatrix,
+                                         double threshold,
+                                         int &numClusters) {
+    int n = jaccardMatrix.rows();
+    std::vector<int> clusterId(n, -1);
+    numClusters = 0;
+
+    for (int i = 0; i < n; i++) {
+        if (clusterId[i] != -1) continue;
+        std::queue<int> q;
+        q.push(i);
+        clusterId[i] = numClusters;
+
+        while (!q.empty()) {
+            int u = q.front(); q.pop();
+            for (int v = 0; v < n; v++) {
+                if (u == v) continue;
+                if (jaccardMatrix(u, v) >= threshold && clusterId[v] == -1) {
+                    clusterId[v] = numClusters;
+                    q.push(v);
+                }
+            }
+        }
+        numClusters++;
+    }
+    return clusterId;
+}
