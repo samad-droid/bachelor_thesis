@@ -164,7 +164,7 @@ inline void saveSubspacesToCSV(const std::vector<AffineSubspaceModel>& models,
 
 
 // ===== 3D visualization =====
-void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& name) {
+void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& name, const glm::vec3& color) {
     int dim = model.basis.cols();
     if (dim < 1 || dim > 3) {
         std::cerr << "Error: unsupported subspace dimension: " << dim << "\n";
@@ -182,7 +182,8 @@ void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& na
             {p2.x(), p2.y(), p2.z()}
         };
         std::vector<std::array<size_t, 2>> edges = {{0, 1}};
-        polyscope::registerCurveNetwork(name, points, edges);
+        auto curve = polyscope::registerCurveNetwork(name, points, edges);
+        curve->setColor(color);
 
     } else if (dim == 2) {
         double s = 5.0;
@@ -200,7 +201,9 @@ void visualizeSubspace3D(const AffineSubspaceModel& model, const std::string& na
             {0, 1}, {1, 2}, {2, 3}, {3, 0}
         };
 
-        polyscope::registerCurveNetwork(name + "_plane", squarePoints, squareEdges);
+        auto plane = polyscope::registerCurveNetwork(name + "_plane", squarePoints, squareEdges);
+        plane->setColor(color);
+
     } else {
         std::cerr << "3D subspace visualization not implemented\n";
     }
@@ -226,6 +229,7 @@ template<typename ModelT>
 inline void visualizeSubspace2D(const ModelT& model,
                                 const std::string& name,
                                 const std::vector<Eigen::VectorXd>& allVecPoints,
+                                const glm::vec3& color,          // NEW
                                 double coordExtent = 1.0) {
     if (model.origin.size() < 2) return;
     Eigen::Vector2d origin2 = model.origin.head(2).template cast<double>();
@@ -235,7 +239,10 @@ inline void visualizeSubspace2D(const ModelT& model,
     if (subDim == 0) {
         std::vector<glm::vec3> pts{{(float)origin2(0), (float)origin2(1), 0.0f}};
         auto pc = polyscope::registerPointCloud(name + " (origin)", pts);
-        if (pc) pc->setPointRadius(0.05f);
+        if (pc) {
+            pc->setPointRadius(0.05f);
+            pc->setPointColor(color);   // apply color
+        }
         return;
     }
 
@@ -270,7 +277,10 @@ inline void visualizeSubspace2D(const ModelT& model,
             linePts.emplace_back((float)pos(0), (float)pos(1), 0.0f);
         }
         auto pc = polyscope::registerPointCloud(name + " (line)", linePts);
-        if (pc) pc->setPointRadius(0.01f);
+        if (pc) {
+            pc->setPointRadius(0.01f);
+            pc->setPointColor(color);   // apply color
+        }
         return;
     }
 
@@ -300,9 +310,13 @@ inline void visualizeSubspace2D(const ModelT& model,
             }
         }
         auto pc = polyscope::registerPointCloud(name + " (plane)", grid);
-        if (pc) pc->setPointRadius(0.005f);
+        if (pc) {
+            pc->setPointRadius(0.005f);
+            pc->setPointColor(color);   // apply color
+        }
     }
 }
+
 
 // ========================= Clustering Helper =========================
 inline std::vector<int> clusterSubspaces(const Eigen::MatrixXd &jaccardMatrix,

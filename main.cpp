@@ -65,44 +65,6 @@ int main() {
         auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
         std::cout << "Greedy multi-RANSAC detected " << detectedModels.size() << " subspaces\n";
 
-        // Visualization
-        for (int i = 0; i < detectedModels.size(); ++i) {
-            const auto& model = detectedModels[i];
-            std::cout << "Model " << i << ": dim=" << model.basis.cols()
-                      << ", inliers=" << model.inliers.size() << "\n";
-
-            if (model.origin.size() == 3) {
-                visualizeSubspace3D(model, "RANSAC Subspace " + std::to_string(i));
-
-                std::vector<glm::vec3> inlierPoints;
-                for (int idx : model.inliers) {
-                    const Eigen::VectorXd& p = allVecPoints[idx];
-                    inlierPoints.push_back(glm::vec3(
-                        static_cast<float>(p(0)),
-                        static_cast<float>(p(1)),
-                        static_cast<float>(p(2))
-                    ));
-                }
-                polyscope::registerPointCloud("Subspace " + std::to_string(i) + " Inliers", inlierPoints);
-
-            } else if (model.origin.size() == 2) {
-                visualizeSubspace2D(model, "RANSAC Subspace " + std::to_string(i), allVecPoints);
-
-                std::vector<glm::vec3> inlierPoints;
-                for (int idx : model.inliers) {
-                    const Eigen::VectorXd& p = allVecPoints[idx];
-                    inlierPoints.push_back(glm::vec3(
-                        static_cast<float>(p(0)),
-                        static_cast<float>(p(1)),
-                        0.0f
-                    ));
-                }
-                polyscope::registerPointCloud("Subspace " + std::to_string(i) + " Inliers", inlierPoints);
-            } else {
-                std::cout << "Unknown ambient dim for model.origin: " << model.origin.size() << "\n";
-            }
-        }
-
         // Intersection / Jaccard / Normalized Matrices
         int n = detectedModels.size();
         Eigen::MatrixXi intersectionMatrix = Eigen::MatrixXi::Zero(n, n);
@@ -148,8 +110,78 @@ int main() {
                 std::cout << "\n";
             }
 
+            // assign cluster ids
             for (int i = 0; i < n; i++)
                 detectedModels[i].clusterId = clusterIdVec[i];
+
+            // assign distinct colors per cluster using HSV wheel
+            std::vector<glm::vec3> clusterColors(numClusters);
+            for (int c = 0; c < numClusters; c++) {
+                float hue = static_cast<float>(c) / std::max(1, numClusters); // evenly spaced [0,1)
+                float s = 0.9f;  // strong saturation
+                float v = 0.9f;  // bright
+
+                float r, g, b;
+                int i = int(hue * 6.0f);
+                float f = hue * 6.0f - i;
+                float p = v * (1.0f - s);
+                float q = v * (1.0f - f * s);
+                float t = v * (1.0f - (1.0f - f) * s);
+                switch (i % 6) {
+                    case 0: r = v, g = t, b = p; break;
+                    case 1: r = q, g = v, b = p; break;
+                    case 2: r = p, g = v, b = t; break;
+                    case 3: r = p, g = q, b = v; break;
+                    case 4: r = t, g = p, b = v; break;
+                    case 5: r = v, g = p, b = q; break;
+                }
+                clusterColors[c] = glm::vec3(r, g, b);
+            }
+
+
+            // Visualization per model with cluster color
+            for (int i = 0; i < detectedModels.size(); ++i) {
+                const auto& model = detectedModels[i];
+                glm::vec3 color = clusterColors[model.clusterId];
+
+                std::cout << "Model " << i << ": dim=" << model.basis.cols()
+                          << ", inliers=" << model.inliers.size()
+                          << ", cluster=" << model.clusterId << "\n";
+
+                if (model.origin.size() == 3) {
+                    visualizeSubspace3D(model, "RANSAC Subspace " + std::to_string(i), color);
+
+                    std::vector<glm::vec3> inlierPoints;
+                    for (int idx : model.inliers) {
+                        const Eigen::VectorXd& p = allVecPoints[idx];
+                        inlierPoints.push_back(glm::vec3(
+                            static_cast<float>(p(0)),
+                            static_cast<float>(p(1)),
+                            static_cast<float>(p(2))
+                        ));
+                    }
+                    auto pc = polyscope::registerPointCloud("Subspace " + std::to_string(i) + " Inliers", inlierPoints);
+                    pc->setPointColor(color);
+
+                } else if (model.origin.size() == 2) {
+                    visualizeSubspace2D(model, "RANSAC Subspace " + std::to_string(i), allVecPoints, color);
+
+                    std::vector<glm::vec3> inlierPoints;
+                    for (int idx : model.inliers) {
+                        const Eigen::VectorXd& p = allVecPoints[idx];
+                        inlierPoints.push_back(glm::vec3(
+                            static_cast<float>(p(0)),
+                            static_cast<float>(p(1)),
+                            0.0f
+                        ));
+                    }
+                    auto pc = polyscope::registerPointCloud("Subspace " + std::to_string(i) + " Inliers", inlierPoints);
+                    pc->setPointColor(color);
+
+                } else {
+                    std::cout << "Unknown ambient dim for model.origin: " << model.origin.size() << "\n";
+                }
+            }
 
             saveSubspacesToCSV(detectedModels, ransacCSV);
         }
