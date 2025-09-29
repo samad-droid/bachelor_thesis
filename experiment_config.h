@@ -7,12 +7,12 @@ inline const int ambientDim = 3;
 inline const int numFlats = 7;
 inline const double originSpread = 8.0;
 inline const double coordExtent = 1.0;
-inline const double noiseStd = 0.45;
+inline const double noiseStd = 0.35;
 inline const int numDataPointsPerFlat = 300;
 // ===== RANSAC Parameters =====
-inline constexpr int MIN_INLIERS = numDataPointsPerFlat * 0.10;
+inline constexpr int MIN_INLIERS = numDataPointsPerFlat * 0.12;
 inline constexpr int RANSAC_ITERATIONS = 1000;
-inline constexpr double RANSAC_THRESHOLD = 0.45;
+inline constexpr double RANSAC_THRESHOLD = 0.35;
 inline constexpr int FIXED_DIMENSION = 1;
 inline constexpr double JACCARD_THRESHOLD = 0.08;
 // ===== RNG =====
@@ -22,3 +22,4 @@ inline std::uniform_int_distribution<int> flatDimDist(1, ambientDim - 1);
 // ===== Output File Names =====
 inline const std::string pointsCSV = "../generated_data_experiment1.csv";
 inline const std::string ransacCSV = "../detected_subspaces_experiment1.csv";
+inline const std::string qdfCSV = "../qdf_representation_experiment1.csv";

@@ -19,7 +19,8 @@ add_executable(bachelor_thesis main.cpp
         ransac_multiD.h
         experiment_config.h
         progressive.h
-        experiment_config_2.h)
+        experiment_config_2.h
+        qdf.h)
 
 target_link_libraries(bachelor_thesis
         polyscope

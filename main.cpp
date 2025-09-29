@@ -18,8 +18,52 @@
 
 #include <limits>
 #include <algorithm>
+#include "qdf.h"
 
 #include "experiment_config.h"
+
+void saveQDFToCSV(const std::string& filename, const std::vector<QDF>& qdfs) {
+    std::ofstream file(filename);
+    if (!file.is_open()) throw std::runtime_error("Could not open file: " + filename);
+
+    if (qdfs.empty()) return;
+
+    // Determine dimensions from first QDF
+    int n = qdfs[0].A().rows();
+    int basis_dim = qdfs[0].basis().cols();
+
+    // Write header
+    file << "cluster";
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            file << ",A" << i << j;
+    for (int i = 0; i < n; i++)
+        file << ",b" << i;
+    file << ",c\n";
+
+    // Write each QDF
+    for (const auto& qdf : qdfs) {
+        int cluster_id = qdf.clusterId();
+        Eigen::MatrixXd A = qdf.A();
+        Eigen::VectorXd b = qdf.b();
+        double c = qdf.c();
+
+        file << cluster_id;
+        for (int i = 0; i < A.rows(); i++)
+            for (int j = 0; j < A.cols(); j++)
+                file << "," << A(i,j);
+        for (int i = 0; i < b.size(); i++)
+            file << "," << b(i);
+        file << "," << c << "\n";
+
+        std::cout << "Saved QDF for cluster " << cluster_id << "\n"; // sanity check
+    }
+
+    file.close();
+    std::cout << "CSV file written with header: " << filename << "\n";
+}
+
+
 
 int main() {
     polyscope::init();
@@ -189,6 +233,50 @@ int main() {
     } catch (const std::exception& e) {
         std::cerr << "RANSAC failed: " << e.what() << "\n";
     }
+
+ std::ifstream infile(ransacCSV);
+if (!infile) {
+    std::cerr << "Error: could not open subspaces.csv\n";
+    return 1;
+}
+
+std::ofstream outfile(qdfCSV);
+if (!outfile) {
+    std::cerr << "Error: could not open qdfs.csv for writing\n";
+    return 1;
+}
+
+std::string line;
+    std::vector<QDF> qdfList;
+    while (std::getline(infile, line)) {
+        if (line.empty()) continue;
+        std::stringstream ss(line);
+        std::string token;
+        std::vector<std::string> tokens;
+        while (std::getline(ss, token, ',')) tokens.push_back(token);
+        if (tokens.size() < 6) continue;
+
+        int cluster_id = std::stoi(tokens[0]);
+        int n = ambientDim;
+        int basis_dim = std::stoi(tokens[1 + n]);
+
+        Eigen::VectorXd origin(n);
+        for (int i = 0; i < n; i++) origin[i] = std::stod(tokens[1 + i]);
+
+        Eigen::MatrixXd basis(n, basis_dim);
+        int basis_start = 1 + n + 1;
+        for (int j = 0; j < basis_dim; j++)
+            for (int i = 0; i < n; i++)
+                basis(i, j) = std::stod(tokens[basis_start + j*n + i]);
+
+        QDF qdf(origin, basis, cluster_id);
+        qdfList.push_back(qdf);
+    }
+
+    // Save all QDFs
+    saveQDFToCSV(qdfCSV, qdfList);
+
+
 
     polyscope::show();
     return 0;
