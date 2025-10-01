@@ -20,7 +20,8 @@ add_executable(bachelor_thesis main.cpp
         experiment_config.h
         progressive.h
         experiment_config_2.h
-        qdf.h)
+        qdf.h
+        qdf_analysis.h)
 
 target_link_libraries(bachelor_thesis
         polyscope

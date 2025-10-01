@@ -19,6 +19,7 @@
 #include <limits>
 #include <algorithm>
 #include "qdf.h"
+#include "qdf_analysis.h"
 
 #include "experiment_config.h"
 
@@ -275,7 +276,7 @@ std::string line;
 
     // Save all QDFs
     saveQDFToCSV(qdfCSV, qdfList);
-
+    QDFAnalysis::analyzeQDFClusters(qdfCSV);
 
 
     polyscope::show();

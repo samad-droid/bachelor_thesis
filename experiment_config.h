@@ -17,7 +17,7 @@ inline constexpr int FIXED_DIMENSION = 1;
 inline constexpr double JACCARD_THRESHOLD = 0.08;
 // ===== RNG =====
 inline std::random_device rd;
-inline std::mt19937 rng(11);
+inline std::mt19937 rng(18);
 inline std::uniform_int_distribution<int> flatDimDist(1, ambientDim - 1);
 // ===== Output File Names =====
 inline const std::string pointsCSV = "../generated_data_experiment1.csv";
