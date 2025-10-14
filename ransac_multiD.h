@@ -12,6 +12,7 @@
 #include "external/polyscope/include/polyscope/polyscope.h"
 #include "external/polyscope/include/polyscope/curve_network.h"
 #include "external/polyscope/include/polyscope/point_cloud.h"
+#include "color_utils.h"
 
 // ===== Model definition =====
 struct AffineSubspaceModel {
@@ -127,13 +128,49 @@ inline std::vector<AffineSubspaceModel> multiRansacAffine(std::vector<Eigen::Vec
                                                           int iterations, double threshold, int min_inliers,
                                                           int fixedDim = 0) {
     std::vector<AffineSubspaceModel> models;
-    while ((int)data.size() >= min_inliers) {
+    std::vector<int> globalIndices(data.size());
+    std::iota(globalIndices.begin(), globalIndices.end(), 0); // 0,1,2,...
+
+    while (static_cast<int>(data.size()) >= min_inliers) {
         auto best = ransacAffine(data, iterations, threshold, min_inliers, fixedDim);
-        if ((int)best.inliers.size() < min_inliers) break;
+        if (static_cast<int>(best.inliers.size()) < min_inliers) break;
+
+        // Convert local inliers → global indices
+        std::unordered_set<int> globalInliers;
+        for (int idx : best.inliers)
+            globalInliers.insert(globalIndices[idx]);
+        best.inliers = std::move(globalInliers);
+
         models.push_back(best);
-        data = removeInliers(data, best.inliers);
+
+        // Remove inliers from both data and globalIndices
+        std::vector<Eigen::VectorXd> newData;
+        std::vector<int> newGlobal;
+        for (int i = 0; i < data.size(); ++i) {
+            if (best.inliers.find(globalIndices[i]) == best.inliers.end()) {
+                newData.push_back(data[i]);
+                newGlobal.push_back(globalIndices[i]);
+            }
+        }
+        data = std::move(newData);
+        globalIndices = std::move(newGlobal);
     }
+
     return models;
+}
+
+inline void recomputeAllInliers(std::vector<AffineSubspaceModel>& models,
+                                const std::vector<Eigen::VectorXd>& allData,
+                                double threshold) {
+    for (auto& model : models) {
+        model.inliers.clear();
+        for (int j = 0; j < allData.size(); ++j) {
+            double dist = pointSubspaceDistance(allData[j], model.origin, model.basis);
+            if (dist < threshold) {
+                model.inliers.insert(j);
+            }
+        }
+    }
 }
 
 // ===== Save subspaces to CSV =====

@@ -70,9 +70,9 @@ inline std::vector<AffineSubspaceModel> progressiveAffine(
         }
     }
 
-    // === assign each point exclusively ===
+    // === First assign exclusively (for algorithm correctness) ===
     int totalPoints = static_cast<int>(points.size());
-    std::vector<int> owner(totalPoints, -1); // owner[p] = index of model, or -1 if outlier
+    std::vector<int> owner(totalPoints, -1);
 
     for (int p = 0; p < totalPoints; ++p) {
         double bestDist = std::numeric_limits<double>::max();
@@ -87,15 +87,19 @@ inline std::vector<AffineSubspaceModel> progressiveAffine(
         owner[p] = bestModel;
     }
 
-    // Clear overlapping inlier sets
+    // === Now reassign allowing multiple memberships ===
+    // Clear all inlier sets
     for (auto& m : models) {
         m.inliers.clear();
     }
 
-    // Rebuild exclusive inlier sets
+    // Rebuild non-exclusive inlier sets
     for (int p = 0; p < totalPoints; ++p) {
-        if (owner[p] != -1) {
-            models[owner[p]].inliers.insert(p);
+        for (int i = 0; i < (int)models.size(); ++i) {
+            double d = pointSubspaceDistance(points[p], models[i].origin, models[i].basis);
+            if (d < threshold) {
+                models[i].inliers.insert(p);
+            }
         }
     }
 

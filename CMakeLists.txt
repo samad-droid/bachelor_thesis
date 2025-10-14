@@ -15,13 +15,15 @@ include_directories(${CMAKE_SOURCE_DIR}/external/eigen)
 
 add_executable(bachelor_thesis main.cpp
         flat.h
-        ransac_line.h
         ransac_multiD.h
         experiment_config.h
         progressive.h
         experiment_config_2.h
         qdf.h
-        qdf_analysis.h)
+        qdf_analysis.h
+        mean_Qdf.h
+        mean_qdf_lines.h
+        color_utils.h)
 
 target_link_libraries(bachelor_thesis
         polyscope

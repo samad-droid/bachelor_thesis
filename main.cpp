@@ -14,12 +14,14 @@
 #include "ransac_multiD.h"
 #include "experiment_config.h"
 //#include "experiment_config_2.h"
-//#include "progressive.h"
+#include "progressive.h"
 
 #include <limits>
 #include <algorithm>
 #include "qdf.h"
 #include "qdf_analysis.h"
+#include "mean_Qdf.h"
+#include "mean_qdf_lines.h"
 
 #include "experiment_config.h"
 
@@ -108,6 +110,7 @@ int main() {
         }
 
         auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
+        recomputeAllInliers(detectedModels, allVecPoints, RANSAC_THRESHOLD);
         std::cout << "Greedy multi-RANSAC detected " << detectedModels.size() << " subspaces\n";
 
         // Intersection / Jaccard / Normalized Matrices
@@ -194,6 +197,7 @@ int main() {
                           << ", cluster=" << model.clusterId << "\n";
 
                 if (model.origin.size() == 3) {
+                    glm::vec3 color = colorFromClusterId(model.clusterId);
                     visualizeSubspace3D(model, "RANSAC Subspace " + std::to_string(i), color);
 
                     std::vector<glm::vec3> inlierPoints;
@@ -209,6 +213,7 @@ int main() {
                     pc->setPointColor(color);
 
                 } else if (model.origin.size() == 2) {
+                    glm::vec3 color = colorFromClusterId(model.clusterId);
                     visualizeSubspace2D(model, "RANSAC Subspace " + std::to_string(i), allVecPoints, color);
 
                     std::vector<glm::vec3> inlierPoints;
@@ -277,6 +282,9 @@ std::string line;
     // Save all QDFs
     saveQDFToCSV(qdfCSV, qdfList);
     QDFAnalysis::analyzeQDFClusters(qdfCSV);
+    MeanQDF::computeMeanQDF(qdfCSV, meanCSV);
+    //polyscope::removeAllStructures();
+    MeanQDFLines::visualizeMeanQDF(meanCSV);
 
 
     polyscope::show();
