@@ -23,7 +23,8 @@ add_executable(bachelor_thesis main.cpp
         qdf_analysis.h
         mean_Qdf.h
         mean_qdf_lines.h
-        color_utils.h)
+        color_utils.h
+        merge_csv.h)
 
 target_link_libraries(bachelor_thesis
         polyscope

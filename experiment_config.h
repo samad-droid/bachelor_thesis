@@ -10,11 +10,12 @@ inline const double coordExtent = 1.0;
 inline const double noiseStd = 0.35;
 inline const int numDataPointsPerFlat = 300;
 // ===== RANSAC Parameters =====
-inline constexpr int MIN_INLIERS = numDataPointsPerFlat * (1.0/numFlats - 0.04);
-inline constexpr int RANSAC_ITERATIONS = 1000;
-inline constexpr double RANSAC_THRESHOLD = 0.35;
+inline constexpr int MIN_INLIERS = numDataPointsPerFlat * 0.10;
+// inline constexpr int MIN_INLIERS = numDataPointsPerFlat * (1.0/numFlats);
+inline constexpr int RANSAC_ITERATIONS = 2000;
+inline constexpr double RANSAC_THRESHOLD = 0.4;
 inline constexpr int FIXED_DIMENSION = 1;
-inline constexpr double JACCARD_THRESHOLD = 0.077;
+inline constexpr double JACCARD_THRESHOLD = 0.08;
 // ===== RNG =====
 inline std::random_device rd;
 inline std::mt19937 rng(54);
@@ -24,3 +25,4 @@ inline const std::string pointsCSV = "../generated_data_experiment1.csv";
 inline const std::string ransacCSV = "../detected_subspaces_experiment1.csv";
 inline const std::string qdfCSV = "../qdf_representation_experiment1.csv";
 inline const std::string meanCSV = "../mean_qdf_experiment1.csv";
+inline const std::string mergeCSV = "../all_lines_experiment1.csv";

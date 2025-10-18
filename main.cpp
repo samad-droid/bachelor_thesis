@@ -22,6 +22,7 @@
 #include "qdf_analysis.h"
 #include "mean_Qdf.h"
 #include "mean_qdf_lines.h"
+#include "merge_csv.h"
 
 #include "experiment_config.h"
 
@@ -285,6 +286,7 @@ std::string line;
     MeanQDF::computeMeanQDF(qdfCSV, meanCSV);
     //polyscope::removeAllStructures();
     MeanQDFLines::visualizeMeanQDF(meanCSV);
+    mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
 
 
     polyscope::show();
