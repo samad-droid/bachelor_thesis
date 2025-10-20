@@ -26,3 +26,4 @@ inline const std::string ransacCSV = "../detected_subspaces_experiment1.csv";
 inline const std::string qdfCSV = "../qdf_representation_experiment1.csv";
 inline const std::string meanCSV = "../mean_qdf_experiment1.csv";
 inline const std::string mergeCSV = "../all_lines_experiment1.csv";
+inline const std::string outputCSV = "../clustered_data_experiment1.csv";

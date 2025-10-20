@@ -7,7 +7,7 @@
 #include <set>
 
 // Utility function to split a CSV line
-static std::vector<std::string> splitCSVLine(const std::string &line) {
+static std::vector<std::string> splitcsvLine(const std::string &line) {
     std::vector<std::string> result;
     std::stringstream ss(line);
     std::string item;
@@ -48,7 +48,7 @@ static void mergeDetectedAndMeanQDF(
 
     // Count how many times each cluster_id appears
     while (std::getline(detected, line)) {
-        auto tokens = splitCSVLine(line);
+        auto tokens = splitcsvLine(line);
         if (tokens.empty()) continue;
         int cluster_id = std::stoi(tokens[0]);
         detectedRows[cluster_id].push_back(line);

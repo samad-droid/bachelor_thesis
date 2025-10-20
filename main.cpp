@@ -25,6 +25,7 @@
 #include "merge_csv.h"
 
 #include "experiment_config.h"
+#include "cluster_points_to subspaces.h"
 
 void saveQDFToCSV(const std::string& filename, const std::vector<QDF>& qdfs) {
     std::ofstream file(filename);
@@ -287,7 +288,7 @@ std::string line;
     //polyscope::removeAllStructures();
     MeanQDFLines::visualizeMeanQDF(meanCSV);
     mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
-
+    assignPointsToSubspaces(pointsCSV, mergeCSV, outputCSV);
 
     polyscope::show();
     return 0;
