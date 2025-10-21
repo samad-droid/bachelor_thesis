@@ -326,4 +326,3 @@ double computeMeanProjectionError(const Eigen::MatrixXd& noisyPts, const Flat<>&
     }
     return totalError / static_cast<double>(N);
 }
-

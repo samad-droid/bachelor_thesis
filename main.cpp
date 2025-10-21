@@ -22,10 +22,11 @@
 #include "qdf_analysis.h"
 #include "mean_Qdf.h"
 #include "mean_qdf_lines.h"
-#include "merge_csv.h"
+#include "merge_csv.h"#
 
 #include "experiment_config.h"
 #include "cluster_points_to subspaces.h"
+#include "clustering_accuracy.h"
 
 void saveQDFToCSV(const std::string& filename, const std::vector<QDF>& qdfs) {
     std::ofstream file(filename);
@@ -68,7 +69,7 @@ void saveQDFToCSV(const std::string& filename, const std::vector<QDF>& qdfs) {
     std::cout << "CSV file written with header: " << filename << "\n";
 }
 
-
+//namespace fs = std::filesystem;
 
 int main() {
     polyscope::init();
@@ -289,6 +290,7 @@ std::string line;
     MeanQDFLines::visualizeMeanQDF(meanCSV);
     mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
     assignPointsToSubspaces(pointsCSV, mergeCSV, outputCSV);
+    computeClusteringMetrics(pointsCSV, outputCSV);
 
     polyscope::show();
     return 0;

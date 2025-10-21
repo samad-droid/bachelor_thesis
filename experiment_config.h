@@ -27,3 +27,5 @@ inline const std::string qdfCSV = "../qdf_representation_experiment1.csv";
 inline const std::string meanCSV = "../mean_qdf_experiment1.csv";
 inline const std::string mergeCSV = "../all_lines_experiment1.csv";
 inline const std::string outputCSV = "../clustered_data_experiment1.csv";
+// ===== Run Parameters =====
+inline const int NUM_RUNS = 3;

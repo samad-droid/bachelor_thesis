@@ -25,7 +25,8 @@ add_executable(bachelor_thesis main.cpp
         mean_qdf_lines.h
         color_utils.h
         merge_csv.h
-        "cluster_points_to subspaces.h")
+        "cluster_points_to subspaces.h"
+        clustering_accuracy.h)
 
 target_link_libraries(bachelor_thesis
         polyscope
