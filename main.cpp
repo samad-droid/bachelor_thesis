@@ -12,8 +12,8 @@
 
 #include "flat.h"
 #include "ransac_multiD.h"
-#include "experiment_config.h"
-//#include "experiment_config_2.h"
+//#include "experiment_config.h"
+#include "experiment_config_2.h"
 #include "progressive.h"
 
 #include <limits>
@@ -22,9 +22,7 @@
 #include "qdf_analysis.h"
 #include "mean_Qdf.h"
 #include "mean_qdf_lines.h"
-#include "merge_csv.h"#
-
-#include "experiment_config.h"
+#include "merge_csv.h"
 #include "cluster_points_to subspaces.h"
 #include "clustering_accuracy.h"
 
@@ -74,8 +72,9 @@ void saveQDFToCSV(const std::string& filename, const std::vector<QDF>& qdfs) {
 int main() {
     polyscope::init();
 
-    std::vector<Eigen::MatrixXd> allPoints;
-    std::vector<int> clusterLabels;
+    /*
+    std::vector<Eigen::MatrixXd> allPoints1;
+    std::vector<int> clusterLabels1;
     int clusterId = 0;
 
     // Generate flats
@@ -98,11 +97,16 @@ int main() {
             std::cout << "Visualization skipped (ambientDim != 3).\n";
         }
 
-        allPoints.push_back(pts);
-        clusterLabels.push_back(clusterId++);
+        allPoints1.push_back(pts);
+        clusterLabels1.push_back(clusterId++);
     }
 
-    savePointsToCSV(pointsCSV, allPoints, clusterLabels);
+    savePointsToCSV(pointsCSV, allPoints1, clusterLabels1);
+    */
+    std::vector<Eigen::MatrixXd> allPoints;
+    std::vector<int> clusterLabels;
+    loadPointsFromCSV(inputCSV, allPoints, clusterLabels);
+    
 
     try {
         std::vector<Eigen::VectorXd> allVecPoints;
@@ -112,7 +116,7 @@ int main() {
             }
         }
 
-        auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
+        auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION, MAX_MODELS);
         recomputeAllInliers(detectedModels, allVecPoints, RANSAC_THRESHOLD);
         std::cout << "Greedy multi-RANSAC detected " << detectedModels.size() << " subspaces\n";
 
@@ -189,6 +193,36 @@ int main() {
                 clusterColors[c] = glm::vec3(r, g, b);
             }
 
+            // ======================================
+            // Show all points (neutral gray background)
+            // ======================================
+            std::vector<glm::vec3> allPoints;
+            for (const auto& p : allVecPoints) {
+                allPoints.push_back(glm::vec3(
+                    static_cast<float>(p(0)),
+                    static_cast<float>(p(1)),
+                    p.size() > 2 ? static_cast<float>(p(2)) : 0.0f
+                ));
+            }
+
+            auto pcAll = polyscope::registerPointCloud("All Points", allPoints);
+            pcAll->setPointColor(glm::vec3(0.8f, 0.8f, 0.8f)); // light gray
+            pcAll->setPointRadius(0.005f);
+
+            // ===== Filter out clusters with only 1 subspace =====
+            std::map<int, int> clusterCounts;
+            for (const auto& model : detectedModels) {
+                clusterCounts[model.clusterId]++;
+            }
+
+            // Remove models belonging to clusters with just 1 subspace
+            std::vector<AffineSubspaceModel> filteredModels;
+            for (const auto& model : detectedModels) {
+                if (clusterCounts[model.clusterId] > 1) {
+                    filteredModels.push_back(model);
+                }
+            }
+            detectedModels = std::move(filteredModels);
 
             // Visualization per model with cluster color
             for (int i = 0; i < detectedModels.size(); ++i) {
@@ -214,6 +248,7 @@ int main() {
                     }
                     auto pc = polyscope::registerPointCloud("Subspace " + std::to_string(i) + " Inliers", inlierPoints);
                     pc->setPointColor(color);
+                    pc->setEnabled(true);
 
                 } else if (model.origin.size() == 2) {
                     glm::vec3 color = colorFromClusterId(model.clusterId);
@@ -230,6 +265,7 @@ int main() {
                     }
                     auto pc = polyscope::registerPointCloud("Subspace " + std::to_string(i) + " Inliers", inlierPoints);
                     pc->setPointColor(color);
+                    pc->setEnabled(true);
 
                 } else {
                     std::cout << "Unknown ambient dim for model.origin: " << model.origin.size() << "\n";
@@ -289,8 +325,8 @@ std::string line;
     //polyscope::removeAllStructures();
     MeanQDFLines::visualizeMeanQDF(meanCSV);
     mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
-    assignPointsToSubspaces(pointsCSV, mergeCSV, outputCSV);
-    computeClusteringMetrics(pointsCSV, outputCSV);
+    assignPointsToSubspaces(inputCSV, mergeCSV, outputCSV);
+    computeClusteringMetrics(inputCSV, outputCSV);
 
     polyscope::show();
     return 0;

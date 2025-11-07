@@ -315,6 +315,85 @@ void savePointsToCSV(const std::string& filename,
     std::cout << "Saved CSV to " << filename << "\n";
 }
 
+// Load points from CSV file with same structure as savePointsToCSV()
+void loadPointsFromCSV(const std::string& filename,
+                       std::vector<Eigen::MatrixXd>& allPoints,
+                       std::vector<int>& clusterLabels) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file: " + filename);
+    }
+
+    std::string line;
+    std::getline(file, line); // skip header (x0,x1,...,cluster)
+
+    std::vector<Eigen::VectorXd> tempPoints;
+    std::vector<int> tempClusters;
+    int ambientDim = -1;
+
+    while (std::getline(file, line)) {
+        if (line.empty()) continue;
+
+        std::stringstream ss(line);
+        std::string token;
+        std::vector<std::string> tokens;
+
+        while (std::getline(ss, token, ',')) {
+            // trim whitespace just in case
+            token.erase(0, token.find_first_not_of(" \t\r\n"));
+            token.erase(token.find_last_not_of(" \t\r\n") + 1);
+            if (!token.empty()) tokens.push_back(token);
+        }
+
+        if (tokens.size() < 2) continue;  // must have at least x and cluster
+
+        if (ambientDim == -1) {
+            ambientDim = static_cast<int>(tokens.size()) - 1;
+        }
+
+        if (tokens.size() != ambientDim + 1) {
+            std::cerr << "Warning: malformed line, skipping -> " << line << "\n";
+            continue;
+        }
+
+        Eigen::VectorXd point(ambientDim);
+        for (int d = 0; d < ambientDim; ++d) {
+            point[d] = std::stod(tokens[d]);
+        }
+
+        int cluster = std::stoi(tokens.back());
+        tempPoints.push_back(point);
+        tempClusters.push_back(cluster);
+    }
+
+    file.close();
+
+    if (ambientDim <= 0 || tempPoints.empty()) {
+        throw std::runtime_error("No valid data read from " + filename);
+    }
+
+    // Group points by cluster
+    std::map<int, std::vector<Eigen::VectorXd>> clusterMap;
+    for (size_t i = 0; i < tempPoints.size(); ++i) {
+        clusterMap[tempClusters[i]].push_back(tempPoints[i]);
+    }
+
+    allPoints.clear();
+    clusterLabels.clear();
+
+    for (const auto& [clusterId, pts] : clusterMap) {
+        Eigen::MatrixXd mat(pts.size(), ambientDim);
+        for (size_t i = 0; i < pts.size(); ++i) {
+            mat.row(i) = pts[i].transpose();
+        }
+        allPoints.push_back(mat);
+        clusterLabels.push_back(clusterId);
+    }
+
+    std::cout << "Loaded " << tempPoints.size() << " points from " << filename
+              << " across " << allPoints.size() << " clusters.\n";
+}
+
 double computeMeanProjectionError(const Eigen::MatrixXd& noisyPts, const Flat<>& flat) {
     double totalError = 0.0;
     int N = noisyPts.rows();

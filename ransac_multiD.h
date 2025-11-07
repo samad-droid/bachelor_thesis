@@ -124,6 +124,7 @@ inline std::vector<Eigen::VectorXd> removeInliers(const std::vector<Eigen::Vecto
 }
 
 // ===== Multi-model RANSAC =====
+/*
 inline std::vector<AffineSubspaceModel> multiRansacAffine(std::vector<Eigen::VectorXd> data,
                                                           int iterations, double threshold, int min_inliers,
                                                           int fixedDim = 0) {
@@ -158,6 +159,22 @@ inline std::vector<AffineSubspaceModel> multiRansacAffine(std::vector<Eigen::Vec
 
     return models;
 }
+*/
+inline std::vector<AffineSubspaceModel> multiRansacAffine(const std::vector<Eigen::VectorXd>& data,
+                                                          int iterations, double threshold, int min_inliers,
+                                                          int fixedDim = 0, int maxModels = 100) {
+    std::vector<AffineSubspaceModel> models;
+
+    // Keep finding models until we hit maxModels or can't find enough inliers
+    while (models.size() < maxModels) {
+        auto best = ransacAffine(data, iterations, threshold, min_inliers, fixedDim);
+        if (static_cast<int>(best.inliers.size()) < min_inliers) break;
+
+        models.push_back(best);
+    }
+
+    return models;
+}
 
 inline void recomputeAllInliers(std::vector<AffineSubspaceModel>& models,
                                 const std::vector<Eigen::VectorXd>& allData,
@@ -173,14 +190,24 @@ inline void recomputeAllInliers(std::vector<AffineSubspaceModel>& models,
     }
 }
 
-// ===== Save subspaces to CSV =====
 inline void saveSubspacesToCSV(const std::vector<AffineSubspaceModel>& models,
                                const std::string& filename) {
+    // First, count subspaces per cluster
+    std::map<int, int> clusterCounts;
+    for (const auto& m : models) {
+        clusterCounts[m.clusterId]++;
+    }
+
     std::ofstream out(filename);
     if (!out.is_open()) throw std::runtime_error("Cannot open file: " + filename);
 
     out << "cluster_id,origin...,basis_dim,basis_vectors...\n";
+    int savedCount = 0;
+
     for (const auto& m : models) {
+        // Skip clusters with only 1 subspace
+        if (clusterCounts[m.clusterId] <= 1) continue;
+
         out << m.clusterId << ",";
 
         for (int i = 0; i < m.origin.size(); ++i) {
@@ -195,9 +222,11 @@ inline void saveSubspacesToCSV(const std::vector<AffineSubspaceModel>& models,
             }
         }
         out << "\n";
+        savedCount++;
     }
-    std::cout << "Saved " << models.size() << " subspaces to " << filename << "\n";
+    std::cout << "Saved " << savedCount << " subspaces to " << filename << "\n";
 }
+
 
 
 // ===== 3D visualization =====
@@ -315,7 +344,7 @@ inline void visualizeSubspace2D(const ModelT& model,
         }
         auto pc = polyscope::registerPointCloud(name + " (line)", linePts);
         if (pc) {
-            pc->setPointRadius(0.01f);
+            pc->setPointRadius(0.002f);
             pc->setPointColor(color);   // apply color
         }
         return;

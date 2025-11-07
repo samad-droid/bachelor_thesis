@@ -1,4 +1,3 @@
-
 #pragma once
 #include <Eigen/Dense>
 #include <Eigen/Eigenvalues>
@@ -8,48 +7,75 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <cmath>
 
 class MeanQDF {
 public:
     static void computeMeanQDF(const std::string& input_filename, const std::string& output_filename) {
-        // Read input CSV
         std::ifstream in(input_filename);
         if (!in) {
             std::cerr << "Error: cannot open " << input_filename << "\n";
             return;
         }
 
-        // Skip header
         std::string header;
         std::getline(in, header);
 
-        // Maps to store sums for each cluster
-        std::map<int, Eigen::Matrix3d> Q_sums;  // Sum of A matrices
-        std::map<int, Eigen::Vector3d> r_sums;  // Sum of b vectors (divided by -2)
-        std::map<int, int> cluster_counts;      // Count of entries per cluster
+        std::string firstLine;
+        std::getline(in, firstLine);
+        if (firstLine.empty()) {
+            std::cerr << "Error: CSV appears empty after header.\n";
+            return;
+        }
+
+        // Peek into first data line to infer dimension
+        std::vector<std::string> firstTokens = splitCSV(firstLine);
+        int total_cols = (int)firstTokens.size();
+
+        // total = 1 (cluster) + n*n (A) + n (b) + 1 (c)
+        int n = std::round((std::sqrt(4 * (total_cols - 2) + 1) - 1) / 2);
+        if (n <= 0) {
+            std::cerr << "Error: cannot infer dimension from CSV, got " << total_cols << " columns.\n";
+            return;
+        }
+
+        std::cout << "Detected dimension n = " << n << " from " << total_cols << " columns.\n";
+
+        // Reset stream to process all lines including the one we read
+        in.clear();
+        in.seekg(0);
+        std::getline(in, header); // skip header again
+
+        // Data structures
+        std::map<int, Eigen::MatrixXd> Q_sums;
+        std::map<int, Eigen::VectorXd> r_sums;
+        std::map<int, int> cluster_counts;
 
         std::string line;
         while (std::getline(in, line)) {
             std::vector<std::string> tokens = splitCSV(line);
-            if (tokens.size() < 14) continue;  // cluster + 9 for A + 3 for b + 1 for c
+            if ((int)tokens.size() < total_cols) continue;
 
             int cluster_id = std::stoi(tokens[0]);
 
-            // Read A matrix (Q in the quadratic form)
-            Eigen::Matrix3d A;
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 3; j++) {
-                    A(i, j) = std::stod(tokens[1 + i*3 + j]);
+            // Read A (n x n)
+            Eigen::MatrixXd A(n, n);
+            int idx = 1;
+            for (int i = 0; i < n; ++i) {
+                for (int j = 0; j < n; ++j) {
+                    A(i, j) = std::stod(tokens[idx++]);
                 }
             }
 
-            // Read b vector and divide by -2 to get r
-            Eigen::Vector3d r;
-            for (int i = 0; i < 3; i++) {
-                r(i) = std::stod(tokens[10 + i]) / -2.0;
+            // Read b (divided by -2)
+            Eigen::VectorXd r(n);
+            for (int i = 0; i < n; ++i) {
+                r(i) = std::stod(tokens[idx++]) / -2.0;
             }
 
-            // Accumulate sums
+            // Skip c term (last token)
+            // double c = std::stod(tokens[idx]);
+
             if (Q_sums.find(cluster_id) == Q_sums.end()) {
                 Q_sums[cluster_id] = A;
                 r_sums[cluster_id] = r;
@@ -61,49 +87,44 @@ public:
             }
         }
 
-        // Process each cluster and write results
+        // Output
         std::ofstream out(output_filename);
-        out << "cluster_id,x_m_0,x_m_1,x_m_2,b_new_0,b_new_1,b_new_2\n";
+        out << "cluster_id";
+        for (int i = 0; i < n; ++i) out << ",x_m_" << i;
+        for (int i = 0; i < n; ++i) out << ",b_new_" << i;
+        out << "\n";
 
         for (const auto& [cluster_id, Q_sum] : Q_sums) {
-            // ✅ Skip clusters with less than 2 lines
-            if (cluster_counts[cluster_id] < 2) {
-                continue;
-            }
+            if (cluster_counts[cluster_id] < 2) continue;
 
-            // 1. Compute Q* and r*
-            Eigen::Matrix3d Q_star = Q_sum;
-            Eigen::Vector3d r_star = r_sums[cluster_id];
+            Eigen::MatrixXd Q_star = Q_sum;
+            Eigen::VectorXd r_star = r_sums[cluster_id];
 
-            // 2. Eigendecomposition of Q*
-            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(Q_star);
-            Eigen::Matrix3d U = es.eigenvectors();
-            Eigen::Vector3d lambda = es.eigenvalues();
+            Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(Q_star);
+            Eigen::MatrixXd U = es.eigenvectors();
+            Eigen::VectorXd lambda = es.eigenvalues();
 
-            // Get eigenvector corresponding to smallest eigenvalue (A_out)
-            Eigen::Vector3d A_out = U.col(0);  // Assuming eigenvalues are in ascending order
+            Eigen::VectorXd A_out = U.col(0);  // smallest eigenvector
 
-            // 3. Compute pseudoinverse
-            Eigen::Matrix3d lambda_pinv = Eigen::Matrix3d::Zero();
-            double epsilon = 1e-10;  // Threshold for considering eigenvalue as zero
-            for (int i = 0; i < 3; i++) {
-                if (std::abs(lambda(i)) > epsilon) {
+            // Pseudoinverse
+            Eigen::MatrixXd lambda_pinv = Eigen::MatrixXd::Zero(n, n);
+            double eps = 1e-10;
+            for (int i = 0; i < n; ++i)
+                if (std::abs(lambda(i)) > eps)
                     lambda_pinv(i, i) = 1.0 / lambda(i);
-                }
-            }
-            Eigen::Matrix3d Q_star_pinv = U * lambda_pinv * U.transpose();
 
-            // 4. Compute minimizer x_m
-            Eigen::Vector3d x_m = Q_star_pinv * r_star;
+            Eigen::MatrixXd Q_star_pinv = U * lambda_pinv * U.transpose();
 
-            // 5. Compute closest point to origin
-            Eigen::Vector3d b_new = x_m - A_out * (A_out.transpose() * x_m);
+            Eigen::VectorXd x_m = Q_star_pinv * r_star;
+            Eigen::VectorXd b_new = x_m - A_out * (A_out.transpose() * x_m);
 
-            // Write results to output file
-            out << cluster_id << ","
-                << x_m(0) << "," << x_m(1) << "," << x_m(2) << ","
-                << b_new(0) << "," << b_new(1) << "," << b_new(2) << "\n";
+            out << cluster_id;
+            for (int i = 0; i < n; ++i) out << "," << x_m(i);
+            for (int i = 0; i < n; ++i) out << "," << b_new(i);
+            out << "\n";
         }
+
+        std::cout << "✅ Mean QDF written to " << output_filename << "\n";
     }
 
 private:
