@@ -25,9 +25,9 @@ public:
             return;
         }
 
-        polyscope::init();
+        //polyscope::init();
         visualizeMeanLines(meanLines);
-        polyscope::show();
+        //polyscope::show();
     }
 
 private:

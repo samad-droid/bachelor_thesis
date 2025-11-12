@@ -324,8 +324,12 @@ std::string line;
     MeanQDF::computeMeanQDF(qdfCSV, meanCSV);
     //polyscope::removeAllStructures();
     MeanQDFLines::visualizeMeanQDF(meanCSV);
-    mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
-    assignPointsToSubspaces(inputCSV, mergeCSV, outputCSV);
+
+    //merging of ransacCSV and meanCSV no longer necessary because we throw out ransac lines that are not in a cluster
+    //anyway and we only use meanQDF lines for clustering
+    //mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
+
+    assignPointsToSubspaces(inputCSV, meanCSV, outputCSV, CLUSTERING_THRESHOLD);
     computeClusteringMetrics(inputCSV, outputCSV);
 
     polyscope::show();
