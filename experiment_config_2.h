@@ -12,7 +12,7 @@ inline const int numDataPointsPerFlat = 300;
 // ===== RANSAC Parameters =====
 inline constexpr int MAX_MODELS = 50;
 inline constexpr int MIN_INLIERS = 5;
-inline constexpr int RANSAC_ITERATIONS = 10;
+inline constexpr int RANSAC_ITERATIONS = 15;
 inline constexpr double RANSAC_THRESHOLD = 0.01;
 inline constexpr int FIXED_DIMENSION = 1;
 inline constexpr double JACCARD_THRESHOLD = 0.22;
@@ -32,7 +32,7 @@ inline const std::string pointsCSV = "../generated_data_experiment2.csv";
 inline const std::string ransacCSV = "../detected_subspaces_experiment2.csv";
 inline const std::string qdfCSV = "../qdf_representation_experiment2.csv";
 inline const std::string meanCSV = "../mean_qdf_experiment2.csv";
-inline const std::string mergeCSV = "../all_lines_experiment2.csv";
 inline const std::string outputCSV = "../clustered_data_experiment2.csv";
+//inline const std::string mergeCSV = "../all_lines_experiment2.csv";
 // ===== Run Parameters =====
 inline const int NUM_RUNS = 10;

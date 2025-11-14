@@ -332,6 +332,6 @@ std::string line;
     assignPointsToSubspaces(inputCSV, meanCSV, outputCSV, CLUSTERING_THRESHOLD);
     computeClusteringMetrics(inputCSV, outputCSV);
 
-    polyscope::show();
+    polyscope::show(500);
     return 0;
 }
