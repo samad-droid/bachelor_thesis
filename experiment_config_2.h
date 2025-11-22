@@ -26,7 +26,7 @@ inline std::uniform_int_distribution<int> flatDimDist(1, ambientDim - 1);
 inline const std::string stair4CSV = "../stair_4.csv";
 inline const std::string star5CSV = "../star5_data.csv";
 inline const std::string star11CSV = "../star11_data.csv";
-inline const std::string inputCSV = star5CSV;
+inline const std::string inputCSV = star11CSV;
 // ===== Output File Names =====
 inline const std::string pointsCSV = "../generated_data_experiment2.csv";
 inline const std::string ransacCSV = "../detected_subspaces_experiment2.csv";

@@ -26,6 +26,7 @@
 #include "cluster_points_to subspaces.h"
 #include "clustering_accuracy.h"
 #include "median_qdf.h"
+#include "medianW_qdf.h"
 
 void saveQDFToCSV(const std::string& filename, const std::vector<QDF>& qdfs) {
     std::ofstream file(filename);
@@ -322,7 +323,7 @@ std::string line;
     // Save all QDFs
     saveQDFToCSV(qdfCSV, qdfList);
     QDFAnalysis::analyzeQDFClusters(qdfCSV);
-    MedianQDF::computeMedianQDF(qdfCSV, meanCSV);
+    MedianWQDF::computeMedianWQDF(qdfCSV, meanCSV);
     //polyscope::removeAllStructures();
     MeanQDFLines::visualizeMeanQDF(meanCSV);
 
