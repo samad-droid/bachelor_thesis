@@ -160,6 +160,8 @@ inline std::vector<AffineSubspaceModel> multiRansacAffine(std::vector<Eigen::Vec
     return models;
 }
 */
+
+
 inline std::vector<AffineSubspaceModel> multiRansacAffine(const std::vector<Eigen::VectorXd>& data,
                                                           int iterations, double threshold, int min_inliers,
                                                           int fixedDim = 0, int maxModels = 100) {

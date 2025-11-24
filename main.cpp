@@ -119,6 +119,7 @@ int main() {
         }
 
         auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION, MAX_MODELS);
+        //auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
         recomputeAllInliers(detectedModels, allVecPoints, RANSAC_THRESHOLD);
         std::cout << "Greedy multi-RANSAC detected " << detectedModels.size() << " subspaces\n";
 
@@ -328,12 +329,13 @@ std::string line;
     MeanQDFLines::visualizeMeanQDF(meanCSV);
 
     //merging of ransacCSV and meanCSV no longer necessary because we throw out ransac lines that are not in a cluster
-    //anyway and we only use meanQDF lines for clustering
+    //anyway and we only use meanQDF lines for clustering, except for sequential ransac as a comparison algorithm
+
     //mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
 
     assignPointsToSubspaces(inputCSV, meanCSV, outputCSV, CLUSTERING_THRESHOLD);
     computeClusteringMetrics(inputCSV, outputCSV);
 
-    polyscope::show();
+    polyscope::show(200);
     return 0;
 }
