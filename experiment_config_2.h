@@ -10,10 +10,10 @@ inline const double coordExtent = 1.0;
 inline const double noiseStd = 0.4;
 inline const int numDataPointsPerFlat = 300;
 // ===== RANSAC Parameters =====
-inline constexpr int MAX_MODELS = 60;
-inline constexpr int MIN_INLIERS = 7;
-inline constexpr int RANSAC_ITERATIONS = 20;
-inline constexpr double RANSAC_THRESHOLD = 0.011;
+inline constexpr int MAX_MODELS = 20;
+inline constexpr int MIN_INLIERS = 20;
+inline constexpr int RANSAC_ITERATIONS = 200;
+inline constexpr double RANSAC_THRESHOLD = 0.012;
 inline constexpr int FIXED_DIMENSION = 1;
 inline constexpr double JACCARD_THRESHOLD = 0.22;
 // ===== Clustering =====
