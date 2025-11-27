@@ -156,7 +156,8 @@ int main() {
         std::vector<double> thresholds = {JACCARD_THRESHOLD};
         for (double thr : thresholds) {
             int numClusters = 0;
-            auto clusterIdVec = clusterSubspaces(jaccardMatrix, thr, numClusters); // call header version
+            //auto clusterIdVec = clusterSubspaces(jaccardMatrix, thr, numClusters);
+            auto clusterIdVec = clusterSubspacesAlglib(jaccardMatrix, thr, numClusters);
 
             std::cout << "\n=== Clustering with threshold " << thr << " ===\n";
             std::cout << "Total clusters: " << numClusters << "\n";
@@ -336,6 +337,6 @@ std::string line;
     assignPointsToSubspaces(inputCSV, meanCSV, outputCSV, CLUSTERING_THRESHOLD);
     computeClusteringMetrics(inputCSV, outputCSV);
 
-    polyscope::show(200);
+    polyscope::show();
     return 0;
 }
