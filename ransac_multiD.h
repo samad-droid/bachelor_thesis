@@ -13,6 +13,9 @@
 #include "external/polyscope/include/polyscope/curve_network.h"
 #include "external/polyscope/include/polyscope/point_cloud.h"
 #include "color_utils.h"
+// ALGLIB INCLUDES (Adjust path if needed based on your CMake setup)
+#include "external/alglib/alglib-cpp/src/dataanalysis.h"
+#include "external/alglib/alglib-cpp/src/stdafx.h"
 
 // ===== Model definition =====
 struct AffineSubspaceModel {
@@ -414,4 +417,95 @@ inline std::vector<int> clusterSubspaces(const Eigen::MatrixXd &jaccardMatrix,
         numClusters++;
     }
     return clusterId;
+}
+
+// ========================= ALGLIB Clustering Helper =========================
+
+// Uses ALGLIB Agglomerative Hierarchical Clustering (AHC)
+// Jaccard Matrix: 1.0 = identical, 0.0 = disjoint
+// Threshold: Similarity threshold (e.g., 0.5 means merge if sim >= 0.5)
+inline std::vector<int> clusterSubspacesAlglib(const Eigen::MatrixXd &jaccardMatrix,
+                                               double similarityThreshold,
+                                               int &numClusters) {
+    int n = jaccardMatrix.rows();
+    if (n == 0) return {};
+    if (n == 1) { numClusters = 1; return {0}; }
+
+    try {
+        // 1. Convert Eigen Jaccard (Similarity) to ALGLIB Distance (1 - Jaccard)
+        alglib::real_2d_array distMat;
+        distMat.setlength(n, n);
+
+        for (int i = 0; i < n; ++i) {
+            for (int j = 0; j < n; ++j) {
+                // Ensure distance is >= 0
+                double dist = 1.0 - jaccardMatrix(i, j);
+                if (dist < 0) dist = 0;
+                distMat(i, j) = dist;
+            }
+        }
+
+        // 2. Setup ALGLIB Clustering
+        alglib::clusterizerstate s;
+        alglib::ahcreport rep;
+
+        alglib::clusterizercreate(s);
+        alglib::clusterizersetpoints(s, distMat, 2); // 2 = Metric (Euclidean/Explicit Matrix) -> actually we use setdistances
+        // Wait, correct call for explicit matrix is clusterizersetdistances
+        alglib::clusterizersetdistances(s, distMat, false); // false = not upper triangle only, we gave full symmetric
+
+        // 3. Run Clustering
+        // In standard ALGLIB C++, `clusterizerrunahc` takes only (state, report).
+        // To set the linkage method (Single, Complete, Average, etc.),
+        // you actually use `clusterizersetahcalgo` BEFORE running.
+
+        // Set Algorithm: 2 = Average Linkage (UPGMA)
+        // (0 = Single, 1 = Complete, 2 = Average, 3 = Ward, etc.)
+        alglib::clusterizersetahcalgo(s, 2);
+
+        // NOW run it
+        alglib::clusterizerrunahc(s, rep);
+
+        // 4. Determine K based on Threshold
+        // The report contains merge distances. We want to cut where Distance > (1 - Threshold).
+        double distThreshold = 1.0 - similarityThreshold;
+
+        // Count how many merges happened with distance <= distThreshold
+        // rep.mergedist is an array of size N-1
+        int mergesBelowThreshold = 0;
+        for (int i = 0; i < rep.mergedist.length(); ++i) {
+            if (rep.mergedist(i) <= distThreshold) {
+                mergesBelowThreshold++;
+            }
+        }
+
+        // If we merged M times, we reduced N clusters to N - M clusters.
+        int k = n - mergesBelowThreshold;
+        if (k < 1) k = 1;
+        if (k > n) k = n;
+
+        // 5. Extract Labels
+        alglib::integer_1d_array cidx;
+        alglib::integer_1d_array cz; // Not used here, hierarchical info
+        alglib::clusterizergetkclusters(rep, k, cidx, cz);
+
+        // Convert back to std::vector
+        std::vector<int> labels(n);
+        int maxId = -1;
+        for (int i = 0; i < n; ++i) {
+            labels[i] = static_cast<int>(cidx(i));
+            if (labels[i] > maxId) maxId = labels[i];
+        }
+
+        numClusters = maxId + 1;
+        return labels;
+
+    } catch (alglib::ap_error& e) {
+        std::cerr << "ALGLIB Error: " << e.msg << "\n";
+        // Fallback: every point is its own cluster
+        numClusters = n;
+        std::vector<int> fallback(n);
+        std::iota(fallback.begin(), fallback.end(), 0);
+        return fallback;
+    }
 }

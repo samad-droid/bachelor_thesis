@@ -112,7 +112,7 @@ int main() {
         std::vector<double> thresholds = {JACCARD_THRESHOLD};
         for (double thr : thresholds) {
             int numClusters = 0;
-            auto clusterIdVec = clusterSubspaces(jaccardMatrix, thr, numClusters);
+            auto clusterIdVec = clusterSubspacesAlglib(jaccardMatrix, thr, numClusters);
 
             // =========================================================
             // CRITICAL FIX: Reassign -1 IDs to unique positive IDs
