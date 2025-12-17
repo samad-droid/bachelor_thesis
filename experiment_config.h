@@ -17,7 +17,7 @@ inline constexpr int MIN_INLIERS = numDataPointsPerFlat * 0.10;
 // inline constexpr int MIN_INLIERS = numDataPointsPerFlat * (1.0/numFlats);
 inline constexpr int RANSAC_ITERATIONS = 15;
 inline constexpr double RANSAC_THRESHOLD = 0.2;
-inline constexpr int FIXED_DIMENSION = 1;
+inline constexpr int FIXED_DIMENSION = 8;
 inline constexpr double JACCARD_THRESHOLD = 0.1;
 // ===== RNG =====
 inline std::random_device rd;
@@ -27,6 +27,8 @@ inline std::uniform_int_distribution<int> flatDimDist(1, ambientDim - 1);
 inline const std::string stair4CSV = "../stair_4.csv";
 inline const std::string star5CSV = "../star5_data.csv";
 inline const std::string star11CSV = "../star11_data.csv";
+inline const std::string face_smallCSV = "../face_data_small.csv";
+inline const std::string inputCSV = face_smallCSV;
 // ===== Output File Names =====
 inline const std::string pointsCSV = "../generated_data_experiment1.csv";
 inline const std::string ransacCSV = "../detected_subspaces_experiment1.csv";
