@@ -74,37 +74,6 @@ void saveQDFToCSV(const std::string& filename, const std::vector<QDF>& qdfs) {
 int main() {
     polyscope::init();
 
-    /*
-    std::vector<Eigen::MatrixXd> allPoints1;
-    std::vector<int> clusterLabels1;
-    int clusterId = 0;
-
-    // Generate flats
-    for (int i = 0; i < numFlats; ++i) {
-        int flatDim = flatDimDist(rng);
-
-        std::vector<Flat<>> flats = generateRandomFlats(1, ambientDim, flatDim, originSpread, rng);
-        Flat<> flat = flats[0];
-
-        Eigen::MatrixXd pts = generateNoisyFlatSamples(flat, numDataPointsPerFlat, coordExtent, noiseStd, rng);
-        double err = computeMeanProjectionError(pts, flat);
-        std::cout << "Random Flat " << i << " (dim=" << flatDim << "): Mean projection error = " << err << "\n";
-
-        // Visualization
-        if (ambientDim == 3) {
-            visualizeFlatSamples3D(flat, pts, "Random Flat " + std::to_string(i), 1.0, 20);
-        } else if (ambientDim == 2) {
-            visualizeFlatSamples2D(pts, "Random Flat " + std::to_string(i)); // call header version
-        } else {
-            std::cout << "Visualization skipped (ambientDim != 3).\n";
-        }
-
-        allPoints1.push_back(pts);
-        clusterLabels1.push_back(clusterId++);
-    }
-
-    savePointsToCSV(pointsCSV, allPoints1, clusterLabels1);
-    */
     std::vector<Eigen::MatrixXd> allPoints;
     std::vector<int> clusterLabels;
     loadPointsFromCSV(inputCSV, allPoints, clusterLabels);
@@ -229,6 +198,7 @@ int main() {
             detectedModels = std::move(filteredModels);
 
             // Visualization per model with cluster color
+
             for (int i = 0; i < detectedModels.size(); ++i) {
                 const auto& model = detectedModels[i];
                 glm::vec3 color = clusterColors[model.clusterId];
@@ -324,7 +294,7 @@ std::string line;
 
     // Save all QDFs
     saveQDFToCSV(qdfCSV, qdfList);
-    QDFAnalysis::analyzeQDFClusters(qdfCSV);
+    //QDFAnalysis::analyzeQDFClusters(qdfCSV);
     MedianWQDF::computeMedianWQDF(qdfCSV, meanCSV);
     //polyscope::removeAllStructures();
     MeanQDFLines::visualizeMeanQDF(meanCSV);
@@ -337,6 +307,6 @@ std::string line;
     assignPointsToSubspaces(inputCSV, meanCSV, outputCSV, CLUSTERING_THRESHOLD);
     computeClusteringMetrics(inputCSV, outputCSV);
 
-    polyscope::show();
+    //polyscope::show();
     return 0;
 }

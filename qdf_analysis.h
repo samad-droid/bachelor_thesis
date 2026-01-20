@@ -91,10 +91,10 @@ inline void analyzeQDFClusters(const std::string& filename) {
         auto& subspaces = kv.second;
         int n = (int)subspaces.size();
         if (n <= 1) continue;
-
+        /*
         std::cout << "\n=== Cluster " << cid << " : " << n << " subspaces ===\n";
         std::cout << "Pair , Eigenvalues\n";
-
+        */
         // Precompute Q = I - A A^T
         Matrix I = Matrix::Identity(d, d);
         std::vector<Matrix> Qs;

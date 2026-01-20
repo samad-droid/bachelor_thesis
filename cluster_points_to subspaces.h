@@ -8,6 +8,7 @@
 #include <limits>
 #include <stdexcept>
 #include <algorithm>
+#include <map> // Added for debug counting
 
 #include "ransac_multiD.h"
 
@@ -74,8 +75,6 @@ inline std::vector<Eigen::VectorXd> loadGeneratedPointsCSV(
 
 // ---------------------------------------------------------
 // Load subspaces from all_lines.csv using known ambientDim
-// Expect line format produced by saveSubspacesToCSV:
-// cluster_id, origin[0],...,origin[d-1], basis_dim, basis_flattened (d * basis_dim numbers)
 // ---------------------------------------------------------
 inline std::vector<AffineSubspaceModel> loadSubspacesFromCSV_fixedDim(const std::string &filename, int ambientDim) {
     std::ifstream file(filename);
@@ -98,23 +97,8 @@ inline std::vector<AffineSubspaceModel> loadSubspacesFromCSV_fixedDim(const std:
             std::cerr << "Skipping row with invalid cluster id: " << line << "\n";
             continue;
         }
-        /*
-        // === Case 1: mean_qdf_lines format ===
-        // cluster_id, x_m_0...x_m_d-1, b_new_0...b_new_d-1
-        if (toks.size() == (size_t)(1 + 2 * ambientDim)) {
-            m.origin = Eigen::VectorXd(ambientDim);
-            m.basis = Eigen::MatrixXd::Zero(ambientDim, 1); // single direction = difference
 
-            for (int i = 0; i < ambientDim; ++i)
-                m.origin(i) = std::stod(toks[idx++]);
-            for (int i = 0; i < ambientDim; ++i)
-                m.basis(i, 0) = std::stod(toks[idx++]) - m.origin(i); // direction = b_new - x_m
-
-            models.push_back(std::move(m));
-            continue;
-        }*/
         // === Case 1: mean_qdf_lines format ===
-        // Format: cluster_id, x_m_0, ..., x_m_d-1, b_new_0, ..., b_new_d-1
         if (toks.size() == (size_t)(1 + 2 * ambientDim)) {
             m.origin = Eigen::VectorXd(ambientDim);
             Eigen::VectorXd b_new(ambientDim);
@@ -145,7 +129,6 @@ inline std::vector<AffineSubspaceModel> loadSubspacesFromCSV_fixedDim(const std:
             models.push_back(std::move(m));
             continue;
         }
-
 
         // === Case 2: detected_subspaces format ===
         if (toks.size() < (size_t)(1 + ambientDim + 1)) {
@@ -180,14 +163,13 @@ inline std::vector<AffineSubspaceModel> loadSubspacesFromCSV_fixedDim(const std:
 
 // ---------------------------------------------------------
 // Main assignment function: reads points, reads subspaces,
-// assigns each point to closest subspace by pointSubspaceDistance,
-// writes output CSV replacing flat number with cluster_id
+// assigns each point to closest subspace regardless of distance.
 // ---------------------------------------------------------
 inline void assignPointsToSubspaces(
     const std::string &generatedDataFile,
     const std::string &allLinesFile,
     const std::string &outputFile,
-    double threshold)
+    double /*threshold*/ ) // Threshold argument kept for compatibility but ignored
 {
     std::vector<int> originalLabels;
     int ambientDim = 0;
@@ -197,36 +179,30 @@ inline void assignPointsToSubspaces(
 
     auto models = loadSubspacesFromCSV_fixedDim(allLinesFile, ambientDim);
     std::cout << "DEBUG: loaded " << models.size() << " models\n";
-    for (const auto& m : models) {
-        std::cout << "Model " << m.clusterId
-                  << " origin=(" << m.origin.transpose() << ") "
-                  << "basis=(" << m.basis.transpose() << ")\n";
-    }
 
     if (models.empty()) {
         std::cerr << "Warning: no valid subspace models loaded from " << allLinesFile << "\n";
-        // still write a file with cluster_id = -1 for all points
     }
 
     std::ofstream out(outputFile);
     if (!out.is_open())
         throw std::runtime_error("Cannot open output file: " + outputFile);
 
-    // header x0,x1,...,x{d-1},cluster_id
+    // header
     for (int i = 0; i < ambientDim; ++i) {
         out << "x" << i << ",";
     }
     out << "cluster_id\n";
 
+    std::map<int, int> assignmentCounts;
+
     for (size_t i = 0; i < points.size(); ++i) {
         double minDist = std::numeric_limits<double>::infinity();
-
         int bestCluster = -1;
 
+        // Find closest subspace
         for (const auto &m : models) {
-            // guard: origin and basis dimension should match ambientDim
             if (m.origin.size() != ambientDim || m.basis.rows() != ambientDim) {
-                std::cerr << "Skipping model with mismatched dimension (clusterId=" << m.clusterId << ")\n";
                 continue;
             }
 
@@ -236,17 +212,22 @@ inline void assignPointsToSubspaces(
                 bestCluster = m.clusterId;
             }
         }
-        //std::cout << "d = " << minDist << "\n";
-        // reject if too far
-        if (minDist > threshold)
-            bestCluster = -1;
 
-        // write point and assigned cluster (or -1 if none)
+        // --- CHANGED: Removed threshold check. We force assignment to the closest cluster. ---
+        // if (minDist > threshold) bestCluster = -1; // This logic is deleted.
+
+        assignmentCounts[bestCluster]++;
+
+        // write point and assigned cluster
         for (int j = 0; j < ambientDim; ++j) {
             out << points[i](j) << ",";
         }
         out << bestCluster << "\n";
     }
 
-    std::cout << "Saved clustered points to " << outputFile << " (assigned using " << models.size() << " subspaces)\n";
+    std::cout << "\n=== Assignment Summary ===\n";
+    for(auto const& [cluster, count] : assignmentCounts) {
+        std::cout << "Cluster " << cluster << ": " << count << " points assigned\n";
+    }
+    std::cout << "Saved clustered points to " << outputFile << "\n";
 }

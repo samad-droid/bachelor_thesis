@@ -3,19 +3,19 @@
 #include <random>
 
 // ===== Synthetic Data Creation =====
-inline const int ambientDim = 2016;
+inline const int ambientDim = 55;
 inline const int numFlats = 7;
 inline const double originSpread = 6.0;
 inline const double coordExtent = 1.0;
 inline const double noiseStd = 0.4;
 inline const int numDataPointsPerFlat = 300;
 // ===== RANSAC Parameters =====
-inline constexpr int MAX_MODELS = 60;
-inline constexpr int MIN_INLIERS = 7;
-inline constexpr int RANSAC_ITERATIONS = 20;
-inline constexpr double RANSAC_THRESHOLD = 0.5;
+inline constexpr int MAX_MODELS = 70;
+inline constexpr int MIN_INLIERS = 11;
+inline constexpr int RANSAC_ITERATIONS = 100;
+inline constexpr double RANSAC_THRESHOLD = 4.2;
 inline constexpr int FIXED_DIMENSION = 8;
-inline constexpr double JACCARD_THRESHOLD = 0.1;
+inline constexpr double JACCARD_THRESHOLD = 0.2;
 // ===== Clustering =====
 inline constexpr double CLUSTERING_THRESHOLD = 0.02;
 // ===== RNG =====
@@ -26,7 +26,7 @@ inline std::uniform_int_distribution<int> flatDimDist(1, ambientDim - 1);
 inline const std::string stair4CSV = "../stair_4.csv";
 inline const std::string star5CSV = "../star5_data.csv";
 inline const std::string star11CSV = "../star11_data.csv";
-inline const std::string face_smallCSV = "../face_data_small.csv";
+inline const std::string face_smallCSV = "../face_data_pca_small.csv";
 inline const std::string inputCSV = face_smallCSV;
 // ===== Output File Names =====
 inline const std::string pointsCSV = "../generated_data_experiment2.csv";
