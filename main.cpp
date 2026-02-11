@@ -90,7 +90,7 @@ int main() {
         auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION, MAX_MODELS);
         //auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
         recomputeAllInliers(detectedModels, allVecPoints, RANSAC_THRESHOLD);
-        std::cout << "Greedy multi-RANSAC detected " << detectedModels.size() << " subspaces\n";
+        std::cout << "RANSAC detected " << detectedModels.size() << " subspaces\n";
 
         // Intersection / Jaccard / Normalized Matrices
         int n = detectedModels.size();
