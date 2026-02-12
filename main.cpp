@@ -77,7 +77,7 @@ int main() {
     std::vector<Eigen::MatrixXd> allPoints;
     std::vector<int> clusterLabels;
     loadPointsFromCSV(inputCSV, allPoints, clusterLabels);
-    
+
 
     try {
         std::vector<Eigen::VectorXd> allVecPoints;
@@ -87,7 +87,7 @@ int main() {
             }
         }
 
-        auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION, MAX_MODELS);
+        auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
         //auto detectedModels = multiRansacAffine(allVecPoints, RANSAC_ITERATIONS, RANSAC_THRESHOLD, MIN_INLIERS, FIXED_DIMENSION);
         recomputeAllInliers(detectedModels, allVecPoints, RANSAC_THRESHOLD);
         std::cout << "RANSAC detected " << detectedModels.size() << " subspaces\n";
@@ -120,7 +120,19 @@ int main() {
         std::cout << "Intersection matrix:\n" << intersectionMatrix << "\n\n";
         std::cout << "Jaccard similarity matrix:\n" << jaccardMatrix << "\n\n";
         std::cout << "Normalized intersection matrix:\n" << normalizedMatrix << "\n\n";
+        // 1. Perform the clustering using the matrix you just calculated
+        int numClusters = 0;
+        // Use a threshold that makes sense for your data (e.g., 0.5)
+        // If you want every distinct subspace to be its own cluster, use a very high threshold (e.g. 0.99)
+        std::vector<int> labels = clusterSubspacesAlglib(jaccardMatrix, 0.5, numClusters);
 
+        // 2. Assign the new labels back to the models
+        for (size_t i = 0; i < detectedModels.size(); ++i) {
+            detectedModels[i].clusterId = labels[i];
+        }
+
+        saveSubspacesToCSV(detectedModels, ransacCSV);
+        /*
         // Clustering using header function
         std::vector<double> thresholds = {JACCARD_THRESHOLD};
         for (double thr : thresholds) {
@@ -189,6 +201,7 @@ int main() {
             }
 
             // Remove models belonging to clusters with just 1 subspace
+            /*
             std::vector<AffineSubspaceModel> filteredModels;
             for (const auto& model : detectedModels) {
                 if (clusterCounts[model.clusterId] > 1) {
@@ -196,7 +209,8 @@ int main() {
                 }
             }
             detectedModels = std::move(filteredModels);
-
+            */
+            /*
             // Visualization per model with cluster color
 
             for (int i = 0; i < detectedModels.size(); ++i) {
@@ -245,9 +259,10 @@ int main() {
                     std::cout << "Unknown ambient dim for model.origin: " << model.origin.size() << "\n";
                 }
             }
+            }
+            */
 
-            saveSubspacesToCSV(detectedModels, ransacCSV);
-        }
+
 
     } catch (const std::exception& e) {
         std::cerr << "RANSAC failed: " << e.what() << "\n";
@@ -293,18 +308,18 @@ std::string line;
     }
 
     // Save all QDFs
-    saveQDFToCSV(qdfCSV, qdfList);
+    //saveQDFToCSV(qdfCSV, qdfList);
     //QDFAnalysis::analyzeQDFClusters(qdfCSV);
-    MedianWQDF::computeMedianWQDF(qdfCSV, meanCSV);
+    //MedianWQDF::computeMedianWQDF(qdfCSV, meanCSV);
     //polyscope::removeAllStructures();
-    MeanQDFLines::visualizeMeanQDF(meanCSV);
+    //MeanQDFLines::visualizeMeanQDF(meanCSV);
 
     //merging of ransacCSV and meanCSV no longer necessary because we throw out ransac lines that are not in a cluster
     //anyway and we only use meanQDF lines for clustering, except for sequential ransac as a comparison algorithm
 
     //mergeDetectedAndMeanQDF(ransacCSV, meanCSV, mergeCSV);
 
-    assignPointsToSubspaces(inputCSV, meanCSV, outputCSV, CLUSTERING_THRESHOLD);
+    assignPointsToSubspaces(inputCSV, ransacCSV, outputCSV, CLUSTERING_THRESHOLD);
     computeClusteringMetrics(inputCSV, outputCSV);
 
     //polyscope::show();

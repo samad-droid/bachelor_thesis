@@ -127,7 +127,7 @@ inline std::vector<Eigen::VectorXd> removeInliers(const std::vector<Eigen::Vecto
 }
 
 // ===== Multi-model RANSAC =====
-/*
+
 inline std::vector<AffineSubspaceModel> multiRansacAffine(std::vector<Eigen::VectorXd> data,
                                                           int iterations, double threshold, int min_inliers,
                                                           int fixedDim = 0) {
@@ -162,9 +162,9 @@ inline std::vector<AffineSubspaceModel> multiRansacAffine(std::vector<Eigen::Vec
 
     return models;
 }
-*/
 
 
+/*
 inline std::vector<AffineSubspaceModel> multiRansacAffine(const std::vector<Eigen::VectorXd>& data,
                                                           int iterations, double threshold, int min_inliers,
                                                           int fixedDim = 0, int maxModels = 100) {
@@ -180,6 +180,7 @@ inline std::vector<AffineSubspaceModel> multiRansacAffine(const std::vector<Eige
 
     return models;
 }
+*/
 
 inline void recomputeAllInliers(std::vector<AffineSubspaceModel>& models,
                                 const std::vector<Eigen::VectorXd>& allData,
@@ -211,7 +212,7 @@ inline void saveSubspacesToCSV(const std::vector<AffineSubspaceModel>& models,
 
     for (const auto& m : models) {
         // Skip clusters with only 1 subspace
-        if (clusterCounts[m.clusterId] <= 1) continue;
+        //if (clusterCounts[m.clusterId] <= 1) continue;
 
         out << m.clusterId << ",";
 
