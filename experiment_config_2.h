@@ -11,9 +11,9 @@ inline const double noiseStd = 0.4;
 inline const int numDataPointsPerFlat = 300;
 // ===== RANSAC Parameters =====
 inline constexpr int MAX_MODELS = 100;
-inline constexpr int MIN_INLIERS = 10;
-inline constexpr int RANSAC_ITERATIONS = 1000;
-inline constexpr double RANSAC_THRESHOLD = 3.5;
+inline constexpr int MIN_INLIERS = 30;
+inline constexpr int RANSAC_ITERATIONS = 300;
+inline constexpr double RANSAC_THRESHOLD = 12.5 ;
 inline constexpr int FIXED_DIMENSION = 6;
 inline constexpr double JACCARD_THRESHOLD = 0.40;
 // ===== Clustering =====
@@ -26,7 +26,7 @@ inline std::uniform_int_distribution<int> flatDimDist(1, ambientDim - 1);
 inline const std::string stair4CSV = "../stair_4.csv";
 inline const std::string star5CSV = "../star5_data.csv";
 inline const std::string star11CSV = "../star11_data.csv";
-inline const std::string face_smallCSV = "../face_data_pca_2_subjects_random.csv";
+inline const std::string face_smallCSV = "../face_data_pca_5_subjects_random.csv";
 inline const std::string inputCSV = face_smallCSV;
 // ===== Output File Names =====
 inline const std::string pointsCSV = "../generated_data_experiment2.csv";
